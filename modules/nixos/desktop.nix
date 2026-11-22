@@ -97,7 +97,7 @@ in
         font-family: "JetBrainsMono Nerd Font";
       }
 
-      frame {
+      frame.background {
         background-color: rgba(19, 20, 24, 0.88);
         border: 1px solid #27282f;
         border-radius: 12px;
