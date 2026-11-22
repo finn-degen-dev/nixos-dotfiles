@@ -24,7 +24,7 @@
     "return-type": "json",
     "interval": 5,
     "signal": 9,
-    "on-click": "sh -c 'alacritty -e bluetuith; pkill -RTMIN+9 waybar'",
+    "on-click": "python3 ~/.config/waybar/scripts/devices.py --bt-menu",
     "on-click-right": "python3 ~/.config/waybar/scripts/devices.py --bt-toggle",
     "tooltip": true
   },

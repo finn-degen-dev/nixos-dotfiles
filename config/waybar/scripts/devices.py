@@ -28,6 +28,7 @@ ICON_GAMEPAD = "󰊗"
 ICON_PHONE = "󰄜"
 ICON_WATCH = "󰖉"
 ICON_DRIVE = "󰋊"
+ICON_SD = "󰑹"
 ICON_PRINTER = "󰐪"
 ICON_CAMERA = "󰄀"
 ICON_ETHERNET = "󰈀"
@@ -70,6 +71,17 @@ def unwrap_dbus(val):
     if isinstance(val, dict) and "type" in val and "data" in val and len(val) == 2:
         return val["data"]
     return val
+
+
+def format_size(num_bytes: int) -> str:
+    val = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if val < 1000.0 or unit == "TB":
+            if unit in ("B", "KB", "MB"):
+                return f"{int(round(val))} {unit}"
+            return f"{val:.1f} {unit}".replace(".0 ", " ")
+        val /= 1000.0
+    return f"{num_bytes} B"
 
 
 def battery_bar_markup(pct: int, charging: bool = False) -> str:
@@ -188,10 +200,7 @@ def get_upower_batteries() -> list[dict]:
 
     items: list[dict] = []
     for obj_path in paths:
-        if any(
-            k in obj_path
-            for k in ("line_power", "battery_BAT", "DisplayDevice")
-        ):
+        if any(k in obj_path for k in ("line_power", "battery_BAT", "DisplayDevice")):
             continue
         props_raw = run_cmd(
             [
@@ -270,7 +279,7 @@ def classify_bt_icon(bluez_icon: str, name: str) -> str:
     return ICON_BT_CONN
 
 
-def get_bluetooth_state() -> tuple[bool, list[dict]]:
+def get_bluetooth_state(include_paired: bool = False) -> tuple[bool, list[dict]]:
     raw = run_cmd(
         [
             "busctl",
@@ -295,7 +304,9 @@ def get_bluetooth_state() -> tuple[bool, list[dict]]:
                         powered = True
                 if "org.bluez.Device1" in ifaces:
                     dev = ifaces["org.bluez.Device1"]
-                    if not bool(unwrap_dbus(dev.get("Connected", False))):
+                    connected = bool(unwrap_dbus(dev.get("Connected", False)))
+                    paired = bool(unwrap_dbus(dev.get("Paired", False)))
+                    if not connected and not (include_paired and paired):
                         continue
                     addr = str(unwrap_dbus(dev.get("Address", "")) or "")
                     name = str(unwrap_dbus(dev.get("Alias", "")) or unwrap_dbus(dev.get("Name", "")) or addr)
@@ -308,8 +319,10 @@ def get_bluetooth_state() -> tuple[bool, list[dict]]:
                     devices.append(
                         {
                             "mac": addr.lower(),
+                            "raw_mac": addr,
                             "name": name,
                             "icon": classify_bt_icon(icon_name, name),
+                            "connected": connected,
                             "bat": (bat_pct, False) if bat_pct is not None else None,
                         }
                     )
@@ -321,13 +334,17 @@ def get_bluetooth_state() -> tuple[bool, list[dict]]:
     powered = "Powered: yes" in show
     devices = []
     if powered:
-        out = run_cmd(["bluetoothctl", "devices", "Connected"])
+        cmd = ["bluetoothctl", "devices", "Paired" if include_paired else "Connected"]
+        out = run_cmd(cmd)
         for line in out.splitlines():
             m = re.match(r"^Device\s+([0-9A-Fa-f:]{17})\s+(.*)$", line.strip())
             if not m:
                 continue
             mac, name = m.group(1), m.group(2).strip()
             info = run_cmd(["bluetoothctl", "info", mac])
+            connected = "Connected: yes" in info
+            if not include_paired and not connected:
+                continue
             icon_m = re.search(r"^\s*Icon:\s*(\S+)", info, re.M)
             bat_m = re.search(r"^\s*Battery Percentage:.*\((\d+)\)", info, re.M)
             icon_name = icon_m.group(1) if icon_m else ""
@@ -335,8 +352,10 @@ def get_bluetooth_state() -> tuple[bool, list[dict]]:
             devices.append(
                 {
                     "mac": mac.lower(),
+                    "raw_mac": mac,
                     "name": name or mac,
                     "icon": classify_bt_icon(icon_name, name),
+                    "connected": connected,
                     "bat": (bat_pct, False) if bat_pct is not None else None,
                 }
             )
@@ -421,6 +440,8 @@ def classify_usb_icon(
         return ICON_USB
 
     if "08" in classes:
+        if any(k in nl for k in ("sd", "mmc", "card reader")):
+            return ICON_SD
         return ICON_DRIVE
 
     if "07" in classes:
@@ -521,6 +542,8 @@ def get_usb_devices(sys_bats: list[dict], up_bats: list[dict]) -> list[dict]:
                         "icon": sub_icon,
                         "bat": (sb["pct"], sb["charging"]),
                         "is_storage": False,
+                        "is_usb": True,
+                        "blk_name": None,
                     }
                 )
             continue
@@ -533,9 +556,7 @@ def get_usb_devices(sys_bats: list[dict], up_bats: list[dict]) -> list[dict]:
                 name = sb["model"]
         else:
             for ub in up_bats:
-                if (serial and ub["serial"] == serial) or (
-                    vendor == "05ac" and ub["type"] == 8
-                ):
+                if (serial and ub["serial"] == serial) or (vendor == "05ac" and ub["type"] == 8):
                     bat = (ub["pct"], ub["charging"])
                     break
 
@@ -556,45 +577,165 @@ def get_usb_devices(sys_bats: list[dict], up_bats: list[dict]) -> list[dict]:
                 "icon": icon,
                 "bat": bat,
                 "is_storage": any(c == "08" for c, _, _ in ifaces),
+                "is_usb": True,
+                "blk_name": None,
             }
         )
 
     return devices
 
 
-def get_usb_mounts(usb_sysfs_real: str) -> list[tuple[str, str]]:
-    """Return [(block_dev_path, mountpoint), ...] for storage partitions under this USB device."""
-    raw = run_cmd(["lsblk", "-J", "-o", "PATH,MOUNTPOINT"])
-    if not raw:
-        return []
-
-    mounts: dict[str, str] = {}
-    try:
-        for blk in json.loads(raw).get("blockdevices", []):
-            p = blk.get("path")
-            mp = blk.get("mountpoint")
-            if p and mp:
-                mounts[p] = mp
-            for ch in blk.get("children", []) or []:
-                cp = ch.get("path")
-                cmp = ch.get("mountpoint")
-                if cp and cmp:
-                    mounts[cp] = cmp
-    except Exception:
-        return []
-
-    results: list[tuple[str, str]] = []
+def get_sd_card_devices(usb_devices: list[dict]) -> list[dict]:
     sys_block = Path("/sys/class/block")
     if not sys_block.is_dir():
         return []
 
-    for blk_entry in sys_block.iterdir():
-        dev_path = f"/dev/{blk_entry.name}"
-        if dev_path not in mounts:
+    usb_reals = [os.path.realpath(d["sysfs"]) for d in usb_devices if d.get("is_usb")]
+    sd_cards: list[dict] = []
+
+    for blk_dir in sorted(sys_block.iterdir()):
+        if (blk_dir / "partition").exists():
             continue
-        if os.path.realpath(blk_entry).startswith(usb_sysfs_real):
-            results.append((dev_path, mounts[dev_path]))
-    return results
+
+        bname = blk_dir.name
+        size_str_raw = read_text(blk_dir / "size")
+        size_sectors = int(size_str_raw) if size_str_raw.isdigit() else 0
+        if size_sectors <= 0:
+            continue
+
+        size_human = format_size(size_sectors * 512)
+
+        if bname.startswith("mmcblk"):
+            mmc_type = read_text(blk_dir / "device" / "type").upper()
+            if mmc_type not in ("SD", "SDCOMBO"):
+                continue
+            sd_cards.append(
+                {
+                    "bus_id": bname,
+                    "sysfs": str(blk_dir),
+                    "vendor": "mmc",
+                    "product_id": mmc_type.lower(),
+                    "name": f"SD Card ({size_human})",
+                    "icon": ICON_SD,
+                    "bat": None,
+                    "is_storage": True,
+                    "is_usb": False,
+                    "blk_name": bname,
+                }
+            )
+        elif bname.startswith("sd") and read_text(blk_dir / "removable") == "1":
+            dev_real = os.path.realpath(blk_dir / "device") if (blk_dir / "device").exists() else ""
+            if "/usb" not in dev_real:
+                continue
+            if any(dev_real.startswith(ur + "/") for ur in usb_reals):
+                continue
+
+            model = read_text(blk_dir / "device" / "model")
+            if not model or any(k in model.lower() for k in ("sd", "mmc", "card", "reader")):
+                label = f"SD Card ({size_human})"
+            else:
+                label = f"{model} ({size_human})"
+
+            sd_cards.append(
+                {
+                    "bus_id": bname,
+                    "sysfs": str(blk_dir),
+                    "vendor": "cardreader",
+                    "product_id": bname,
+                    "name": label,
+                    "icon": ICON_SD,
+                    "bat": None,
+                    "is_storage": True,
+                    "is_usb": True,
+                    "blk_name": bname,
+                }
+            )
+
+    return sd_cards
+
+
+def get_storage_partitions(dev: dict) -> list[dict]:
+    raw = run_cmd(["lsblk", "-J", "-o", "NAME,PATH,MOUNTPOINT,FSTYPE"])
+    if not raw:
+        return []
+
+    try:
+        block_devs = json.loads(raw).get("blockdevices", [])
+    except Exception:
+        return []
+
+    target_disks: set[str] = set()
+    if dev.get("blk_name"):
+        target_disks.add(dev["blk_name"])
+    else:
+        usb_real = os.path.realpath(dev["sysfs"])
+        sys_block = Path("/sys/class/block")
+        if sys_block.is_dir():
+            for blk_entry in sys_block.iterdir():
+                if (blk_entry / "partition").exists():
+                    continue
+                if os.path.realpath(blk_entry).startswith(usb_real + "/"):
+                    target_disks.add(blk_entry.name)
+
+    parts: list[dict] = []
+    for blk in block_devs:
+        if blk.get("name") not in target_disks:
+            continue
+        children = blk.get("children") or []
+        if children:
+            for ch in children:
+                if ch.get("path"):
+                    parts.append(
+                        {
+                            "path": ch["path"],
+                            "mountpoint": ch.get("mountpoint") or "",
+                            "fstype": ch.get("fstype") or "",
+                        }
+                    )
+        elif blk.get("path") and (blk.get("mountpoint") or blk.get("fstype")):
+            parts.append(
+                {
+                    "path": blk["path"],
+                    "mountpoint": blk.get("mountpoint") or "",
+                    "fstype": blk.get("fstype") or "",
+                }
+            )
+    return parts
+
+
+def set_bluetooth_power(turn_on: bool) -> tuple[bool, str]:
+    if turn_on:
+        rfk = subprocess.run(
+            ["rfkill", "unblock", "bluetooth"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        res = subprocess.run(
+            ["bluetoothctl", "power", "on"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if res.returncode != 0:
+            err = (res.stderr or res.stdout or "").strip()
+            if "Blocked" in err or rfk.returncode != 0:
+                return False, "Blocked by rfkill. Run 'nrs' to apply rfkill permissions."
+            return False, err or "Failed to power on Bluetooth."
+        return True, "Powered On"
+
+    res = subprocess.run(
+        ["bluetoothctl", "power", "off"],
+        capture_output=True,
+        text=True,
+        timeout=3,
+        check=False,
+    )
+    if res.returncode != 0:
+        return False, (res.stderr or res.stdout or "Failed to power off Bluetooth.").strip()
+    return True, "Powered Off"
 
 
 def output_bluetooth() -> None:
@@ -609,7 +750,7 @@ def output_bluetooth() -> None:
                 {
                     "text": ICON_BT_OFF,
                     "class": "off",
-                    "tooltip": "Bluetooth: Off\nClick: bluetuith • Right-click: Power On",
+                    "tooltip": "Bluetooth: Off\nClick: Menu • Right-click: Power On",
                 }
             )
         )
@@ -621,7 +762,7 @@ def output_bluetooth() -> None:
                 {
                     "text": ICON_BT_ON,
                     "class": "idle",
-                    "tooltip": "Bluetooth: On (No devices connected)\nClick: bluetuith • Right-click: Power Off",
+                    "tooltip": "Bluetooth: On (No devices connected)\nClick: Menu • Right-click: Power Off",
                 }
             )
         )
@@ -631,7 +772,7 @@ def output_bluetooth() -> None:
     lines = ["Bluetooth: Connected"]
     for d in devices:
         lines.append(f"{d['icon']} {html.escape(d['name'], quote=False)}{format_bat_tooltip(d['bat'])}")
-    lines.append("Click: bluetuith • Right-click: Power Off")
+    lines.append("Click: Menu • Right-click: Power Off")
 
     print(
         json.dumps(
@@ -648,6 +789,7 @@ def output_usb() -> None:
     sys_bats = get_sysfs_batteries()
     up_bats = get_upower_batteries()
     devices = get_usb_devices(sys_bats, up_bats)
+    devices.extend(get_sd_card_devices(devices))
 
     if not devices:
         print(
@@ -655,17 +797,17 @@ def output_usb() -> None:
                 {
                     "text": "",
                     "class": "empty",
-                    "tooltip": "No external USB devices connected",
+                    "tooltip": "No external USB or SD devices connected",
                 }
             )
         )
         return
 
     text = "  ".join(format_device_bar(d["icon"], d["bat"]) for d in devices)
-    lines = [f"USB Devices ({len(devices)})"]
+    lines = [f"External Devices ({len(devices)})"]
     for d in devices:
         lines.append(f"{d['icon']} {html.escape(d['name'], quote=False)}{format_bat_tooltip(d['bat'])}")
-    lines.append("Click: Inspect USB devices")
+    lines.append("Click: Inspect / Open / Eject")
 
     print(
         json.dumps(
@@ -680,10 +822,17 @@ def output_usb() -> None:
 
 def toggle_bluetooth() -> None:
     powered, _ = get_bluetooth_state()
-    target = "off" if powered else "on"
-    subprocess.run(["bluetoothctl", "power", target], capture_output=True, timeout=3, check=False)
+    ok, msg = set_bluetooth_power(not powered)
     subprocess.run(
-        ["notify-send", "-i", "bluetooth", "Bluetooth", f"Powered {target.capitalize()}"],
+        [
+            "notify-send",
+            "-u",
+            "normal" if ok else "critical",
+            "-i",
+            "bluetooth",
+            "Bluetooth",
+            msg,
+        ],
         capture_output=True,
         timeout=2,
         check=False,
@@ -691,76 +840,200 @@ def toggle_bluetooth() -> None:
     subprocess.run(["pkill", "-RTMIN+9", "waybar"], capture_output=True, timeout=2, check=False)
 
 
-def usb_menu() -> None:
+def bt_menu() -> None:
     sys_bats = get_sysfs_batteries()
     up_bats = get_upower_batteries()
-    devices = get_usb_devices(sys_bats, up_bats)
-    if not devices:
-        subprocess.run(
-            ["notify-send", "-i", "drive-removable-media-usb", "USB Devices", "No external USB devices connected"],
-            check=False,
-        )
-        return
+    powered, devices = get_bluetooth_state(include_paired=True)
+    enrich_bt_batteries(devices, sys_bats, up_bats)
 
-    entries: list[tuple[str, dict, list[tuple[str, str]]]] = []
-    for d in devices:
-        mounts = get_usb_mounts(os.path.realpath(d["sysfs"])) if d["is_storage"] else []
-        bat_str = format_bat_tooltip(d["bat"])
-        mount_str = f" [{', '.join(mp for _, mp in mounts)}]" if mounts else ""
-        label = f"{d['icon']}  {d['name']}{bat_str}{mount_str}"
-        entries.append((label, d, mounts))
+    entries: list[tuple[str, str, dict | None]] = []
+    if not powered:
+        entries.append((f"{ICON_BT_ON}  Turn Bluetooth On", "power_on", None))
+        entries.append(("󰂰  Open Bluetooth Manager (bluetui)", "tui", None))
+    else:
+        connected = [d for d in devices if d["connected"]]
+        paired = [d for d in devices if not d["connected"]]
+        for d in connected:
+            bat_str = format_bat_tooltip(d["bat"])
+            entries.append((f"{d['icon']}  {d['name']} (Connected{bat_str}) — Disconnect", "disconnect", d))
+        for d in paired:
+            entries.append((f"{d['icon']}  {d['name']} — Connect", "connect", d))
+        entries.append(("󰂰  Pair / Manage Devices (bluetui)", "tui", None))
+        entries.append((f"{ICON_BT_OFF}  Turn Bluetooth Off", "power_off", None))
 
     menu_input = "\n".join(label for label, _, _ in entries)
-    res = subprocess.run(
-        ["vicinae", "dmenu", "--placeholder", "Connected USB Devices"],
+    choice = subprocess.run(
+        ["vicinae", "dmenu", "--placeholder", f"Bluetooth: {'On' if powered else 'Off'}"],
         input=menu_input,
         capture_output=True,
         text=True,
         check=False,
-    )
-    choice = res.stdout.strip()
+    ).stdout.strip()
     if not choice:
         return
 
-    for label, d, mounts in entries:
-        if label == choice:
-            if mounts:
-                dev_node, mp = mounts[0]
-                action = subprocess.run(
-                    ["vicinae", "dmenu", "--placeholder", d["name"]],
-                    input=f"Open in Thunar ({mp})\nSafely Eject ({dev_node})",
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                ).stdout.strip()
-                if action.startswith("Open in Thunar"):
-                    subprocess.Popen(["thunar", mp], start_new_session=True)
-                elif action.startswith("Safely Eject"):
+    for label, action, dev in entries:
+        if label != choice:
+            continue
+        if action == "power_on":
+            ok, msg = set_bluetooth_power(True)
+            subprocess.run(
+                ["notify-send", "-u", "normal" if ok else "critical", "-i", "bluetooth", "Bluetooth", msg],
+                check=False,
+            )
+        elif action == "power_off":
+            ok, msg = set_bluetooth_power(False)
+            subprocess.run(
+                ["notify-send", "-u", "normal" if ok else "critical", "-i", "bluetooth", "Bluetooth", msg],
+                check=False,
+            )
+        elif action == "connect" and dev:
+            res = subprocess.run(
+                ["bluetoothctl", "connect", dev["raw_mac"]],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            ok = res.returncode == 0
+            subprocess.run(
+                [
+                    "notify-send",
+                    "-u",
+                    "normal" if ok else "critical",
+                    "-i",
+                    "bluetooth",
+                    dev["name"],
+                    "Connected" if ok else (res.stderr.strip() or res.stdout.strip() or "Connection failed"),
+                ],
+                check=False,
+            )
+        elif action == "disconnect" and dev:
+            subprocess.run(
+                ["bluetoothctl", "disconnect", dev["raw_mac"]],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            subprocess.run(["notify-send", "-i", "bluetooth", dev["name"], "Disconnected"], check=False)
+        elif action == "tui":
+            subprocess.run(["alacritty", "-e", "bluetui"], check=False)
+        break
+
+    subprocess.run(["pkill", "-RTMIN+9", "waybar"], capture_output=True, timeout=2, check=False)
+
+
+def usb_menu() -> None:
+    sys_bats = get_sysfs_batteries()
+    up_bats = get_upower_batteries()
+    devices = get_usb_devices(sys_bats, up_bats)
+    devices.extend(get_sd_card_devices(devices))
+
+    if not devices:
+        subprocess.run(
+            ["notify-send", "-i", "drive-removable-media-usb", "External Devices", "No external USB or SD devices connected"],
+            check=False,
+        )
+        return
+
+    entries: list[tuple[str, dict, list[dict]]] = []
+    for d in devices:
+        parts = get_storage_partitions(d) if d["is_storage"] else []
+        mounted_mps = [p["mountpoint"] for p in parts if p["mountpoint"]]
+        bat_str = format_bat_tooltip(d["bat"])
+        mount_str = f" [{', '.join(mounted_mps)}]" if mounted_mps else ""
+        label = f"{d['icon']}  {d['name']}{bat_str}{mount_str}"
+        entries.append((label, d, parts))
+
+    menu_input = "\n".join(label for label, _, _ in entries)
+    choice = subprocess.run(
+        ["vicinae", "dmenu", "--placeholder", "Connected USB & SD Devices"],
+        input=menu_input,
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if not choice:
+        return
+
+    for label, d, parts in entries:
+        if label != choice:
+            continue
+
+        mounted = [p for p in parts if p["mountpoint"]]
+        mountable = [p for p in parts if not p["mountpoint"] and p["fstype"]]
+
+        if mounted:
+            dev_node = mounted[0]["path"]
+            mp = mounted[0]["mountpoint"]
+            action = subprocess.run(
+                ["vicinae", "dmenu", "--placeholder", d["name"]],
+                input=f"Open in Thunar ({mp})\nSafely Eject ({dev_node})",
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout.strip()
+            if action.startswith("Open in Thunar"):
+                subprocess.Popen(["thunar", mp], start_new_session=True)
+            elif action.startswith("Safely Eject"):
+                failed_err = ""
+                for p in mounted:
                     unm = subprocess.run(
-                        ["udisksctl", "unmount", "-b", dev_node],
+                        ["udisksctl", "unmount", "-b", p["path"]],
                         capture_output=True,
                         text=True,
                         check=False,
                     )
-                    if unm.returncode == 0:
-                        subprocess.run(["udisksctl", "power-off", "-b", dev_node], check=False)
-                        subprocess.run(
-                            ["notify-send", "-i", "drive-removable-media-usb", "USB Ejected", f"Safe to remove {d['name']}"],
-                            check=False,
-                        )
-                        subprocess.run(["pkill", "-RTMIN+10", "waybar"], check=False)
-                    else:
-                        subprocess.run(
-                            ["notify-send", "-u", "critical", "USB Eject Failed", unm.stderr.strip() or "Device is busy"],
-                            check=False,
-                        )
-            else:
-                info = f"ID {d['vendor']}:{d['product_id']}{format_bat_tooltip(d['bat'])}"
-                subprocess.run(
-                    ["notify-send", "-i", "drive-removable-media-usb", d["name"], info],
+                    if unm.returncode != 0:
+                        failed_err = unm.stderr.strip() or "Device is busy"
+                        break
+                if not failed_err:
+                    if d.get("is_usb"):
+                        subprocess.run(["udisksctl", "power-off", "-b", dev_node], capture_output=True, check=False)
+                    subprocess.run(
+                        ["notify-send", "-i", "drive-removable-media-usb", "Safely Ejected", f"Safe to remove {d['name']}"],
+                        check=False,
+                    )
+                    subprocess.run(["pkill", "-RTMIN+10", "waybar"], check=False)
+                else:
+                    subprocess.run(
+                        ["notify-send", "-u", "critical", "Eject Failed", failed_err],
+                        check=False,
+                    )
+        elif mountable:
+            dev_node = mountable[0]["path"]
+            action = subprocess.run(
+                ["vicinae", "dmenu", "--placeholder", d["name"]],
+                input=f"Mount & Open in Thunar ({dev_node})",
+                capture_output=True,
+                text=True,
+                check=False,
+            ).stdout.strip()
+            if action.startswith("Mount"):
+                mnt = subprocess.run(
+                    ["udisksctl", "mount", "-b", dev_node],
+                    capture_output=True,
+                    text=True,
                     check=False,
                 )
-            break
+                if mnt.returncode == 0:
+                    new_parts = get_storage_partitions(d)
+                    new_mp = next((p["mountpoint"] for p in new_parts if p["path"] == dev_node and p["mountpoint"]), "")
+                    if new_mp:
+                        subprocess.Popen(["thunar", new_mp], start_new_session=True)
+                else:
+                    subprocess.run(
+                        ["notify-send", "-u", "critical", "Mount Failed", mnt.stderr.strip() or "Could not mount device"],
+                        check=False,
+                    )
+        else:
+            info = f"ID {d['vendor']}:{d['product_id']}{format_bat_tooltip(d['bat'])}"
+            subprocess.run(
+                ["notify-send", "-i", "drive-removable-media-usb", d["name"], info],
+                check=False,
+            )
+        break
 
 
 def main() -> None:
@@ -771,6 +1044,8 @@ def main() -> None:
         output_usb()
     elif arg == "--bt-toggle":
         toggle_bluetooth()
+    elif arg == "--bt-menu":
+        bt_menu()
     elif arg == "--usb-menu":
         usb_menu()
 

@@ -201,9 +201,10 @@ in
      KEYBOARD_KEY_delay=200
   '';
 
-  # Allow wheel users to toggle battery charge thresholds/bypass for Wall-Plugged mode
+  # Allow wheel users to toggle battery charge thresholds/bypass and rfkill wireless state
   services.udev.extraRules = ''
     SUBSYSTEM=="power_supply", ACTION=="add|change", RUN+="${powerSupplyPerms}"
+    KERNEL=="rfkill", MODE="0664", GROUP="wheel", TAG+="uaccess"
   '';
 
   programs.thunar = {

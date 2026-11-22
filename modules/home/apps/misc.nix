@@ -50,7 +50,7 @@ in
     pamixer
     xfconf
     repomix
-    bluetuith
+    bluetui
     pavucontrol
 
     xsel
