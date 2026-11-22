@@ -1,11 +1,11 @@
-// Minimal mac-style top bar - workspace, power, audio, battery, time
+// Minimal mac-style top bar - workspace, devices, power, audio, battery, time
 {
   "layer": "top",
   "position": "top",
   "height": 22,
   "modules-left": ["hyprland/workspaces"],
   "modules-center": [],
-  "modules-right": ["custom/power", "pulseaudio", "battery", "clock"],
+  "modules-right": ["custom/bluetooth", "custom/usb", "custom/power", "pulseaudio", "battery", "clock"],
 
   "hyprland/workspaces": {
     "disable-scroll": true,
@@ -17,6 +17,25 @@
       "9": "9", "10": "10",
       "active": "●", "default": "○", "urgent": "◎"
     }
+  },
+
+  "custom/bluetooth": {
+    "exec": "python3 ~/.config/waybar/scripts/devices.py --bluetooth",
+    "return-type": "json",
+    "interval": 5,
+    "signal": 9,
+    "on-click": "sh -c 'alacritty -e bluetuith; pkill -RTMIN+9 waybar'",
+    "on-click-right": "python3 ~/.config/waybar/scripts/devices.py --bt-toggle",
+    "tooltip": true
+  },
+
+  "custom/usb": {
+    "exec": "python3 ~/.config/waybar/scripts/devices.py --usb",
+    "return-type": "json",
+    "interval": 3,
+    "signal": 10,
+    "on-click": "python3 ~/.config/waybar/scripts/devices.py --usb-menu",
+    "tooltip": true
   },
 
   "custom/power": {
