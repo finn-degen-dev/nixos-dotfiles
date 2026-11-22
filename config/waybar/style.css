@@ -1,8 +1,8 @@
-/* Minimal mac-style tiny top bar */
+/* Minimal tiny top bar (JetBrains Mono + solid dark edition) */
 * {
   border: none;
   border-radius: 0;
-  font-family: "SF Pro Display", "Inter", "JetBrainsMono Nerd Font", monospace;
+  font-family: "JetBrainsMono Nerd Font Propo", "JetBrainsMono Nerd Font", monospace;
   font-size: 11px;
   min-height: 0;
 }
@@ -13,7 +13,7 @@ window#waybar {
 }
 
 #workspaces {
-  padding: 0 8px;
+  padding: 0 8px 0 10px;
 }
 
 #workspaces button {
@@ -34,16 +34,13 @@ window#waybar {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* Uniform padding & single font-size across all right-side modules */
 #custom-bluetooth,
-#custom-usb {
-  padding: 0 8px 0 8px;
-  font-size: 13px;
-  color: #e8e8e8;
-}
-
-#custom-bluetooth.off,
-#custom-bluetooth.idle {
-  font-size: 14px;
+#custom-usb,
+#custom-power,
+#pulseaudio,
+#battery {
+  padding: 0 8px;
   color: #e8e8e8;
 }
 
@@ -52,11 +49,9 @@ window#waybar {
   margin: 0;
 }
 
+/* Gentle separation before power/status instead of 64px */
 #custom-power {
-  margin-left: 64px;
-  padding: 0 8px 0 8px;
-  font-size: 12px;
-  color: #e8e8e8;
+  margin-left: 10px;
 }
 
 #custom-power.power-saver {
@@ -75,39 +70,23 @@ window#waybar {
   color: #e8e8e8;
 }
 
-#battery {
-  padding: 0 10px 0 8px;
-  color: #e8e8e8;
-}
-
 #battery.warning {
   color: #ff9f0a;
 }
 
 #battery.critical {
   color: #ff453a;
-  /* animation: blink 1s ease-in-out infinite; */
 }
 
 #battery.charging {
   color: #30d158;
 }
 
-#pulseaudio {
-  padding: 0 10px 0 8px;
-  color: #e8e8e8;
-}
-
 #pulseaudio.muted {
-  color: #e8e8e8;
+  color: #888;
 }
-
-/* @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-} */
 
 #clock {
-  padding: 0 10px 0 4px;
+  padding: 0 12px 0 8px;
   color: #e8e8e8;
 }
