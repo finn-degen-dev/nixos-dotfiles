@@ -86,7 +86,7 @@ def main():
     last_l3 = 0
 
     def set_grab(state: bool):
-        nonlocal grabbed, held, dx_acc, dy_acc, vx, vy
+        nonlocal grabbed, dx_acc, dy_acc, vx, vy
         if state == grabbed:
             return
         for d in devices:

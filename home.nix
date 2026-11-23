@@ -37,6 +37,7 @@
     ./modules/home/apps/kbm2pad.nix
     ./modules/home/apps/webapps.nix
     ./modules/home/apps/comms/default.nix
+    ./modules/home/apps/paisa.nix
   ];
 
   home.username = meta.username;

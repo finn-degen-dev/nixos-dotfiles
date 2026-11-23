@@ -89,7 +89,7 @@ fi
 
 if [ "${1:-}" = "--build" ] || [ "${1:-}" = "build" ]; then
   shift || true
-  cd "$REPO_DIR"
+  cd "$REPO_DIR" || exit 1
   [ ! -d "node_modules" ] && npm install
   echo "Compiling UltraStar Karaoke Maker release binary via Tauri..."
   npm run tauri build
@@ -113,7 +113,7 @@ configure_sidecar_rescue
 mkdir -p "$REPO_DIR/python-sidecar"
 ln -sfn "$VENV_DIR" "$REPO_DIR/python-sidecar/venv"
 
-cd "$REPO_DIR"
+cd "$REPO_DIR" || exit 1
 
 RELEASE_BIN=$(find "$REPO_DIR/src-tauri/target/release" -maxdepth 1 -type f -executable ! -name "*.so" ! -name "build-script-*" 2>/dev/null | head -n 1 || echo "")
 if [ -n "$RELEASE_BIN" ] && [ -x "$RELEASE_BIN" ]; then

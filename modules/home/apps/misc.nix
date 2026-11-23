@@ -43,7 +43,6 @@ in
     localsend-wrapped
     bitwarden-desktop
     ente-auth
-    paisa
     repomix
     python3
     jq
