@@ -29,8 +29,10 @@ configure_sidecar_rescue() {
 
   # Force audio-separator Separator to CPU to avoid VRAM OOM collision with WhisperX
   if [ -d "$REPO_DIR/python-sidecar" ]; then
-    find "$REPO_DIR/python-sidecar" -type f -name "*.py" -exec sed -i 's/Separator(torch_device="cpu", /Separator(/g' {} + 2>/dev/null || true
-    find "$REPO_DIR/python-sidecar" -type f -name "*.py" -exec sed -i 's/Separator(/Separator(torch_device="cpu", /g' {} + 2>/dev/null || true
+    find "$REPO_DIR/python-sidecar" -type f -name "*.py" -exec sed -i \
+      -e 's/Separator(torch_device="cpu", /Separator(/g' \
+      -e '/^[[:space:]]*\(class\|def\)[[:space:]]/! s/Separator(/Separator(torch_device="cpu", /g' \
+      {} + 2>/dev/null || true
   fi
 }
 
@@ -61,7 +63,7 @@ setup_ai_env() {
   configure_sidecar_rescue
 
   echo "[4/5] Pre-downloading NLTK tokenizer models (punkt, punkt_tab)..."
-  "$VENV_DIR/bin/python" -c "import ssl, nltk; ssl._create_default_https_context = ssl._create_unverified_context; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)" 2>/dev/null || true
+  "$VENV_DIR/bin/python" -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)" 2>/dev/null || true
 
   echo "[5/5] Verifying NVIDIA CUDA acceleration:"
   "$VENV_DIR/bin/python" -c "import torch; print('   CUDA Available: ', torch.cuda.is_available()); print('   Device Name:    ', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU (CUDA not detected)')"
@@ -108,7 +110,7 @@ export PATH="$VENV_DIR/bin:$PATH"
 
 configure_sidecar_rescue
 
-"$VENV_DIR/bin/python" -c "import ssl, nltk; ssl._create_default_https_context = ssl._create_unverified_context; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)" 2>/dev/null || true
+"$VENV_DIR/bin/python" -c "import nltk; nltk.download('punkt_tab', quiet=True); nltk.download('punkt', quiet=True)" 2>/dev/null || true
 
 mkdir -p "$REPO_DIR/python-sidecar"
 ln -sfn "$VENV_DIR" "$REPO_DIR/python-sidecar/venv"

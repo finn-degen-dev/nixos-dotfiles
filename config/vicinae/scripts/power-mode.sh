@@ -160,10 +160,10 @@ set_internal_refresh() {
     local has_60
     has_60=$(echo "$mon_json" | jq -r --arg res "${width}x${height}@60" '[.availableModes[] | select(startswith($res))] | length')
     if [ "${has_60:-0}" -gt 0 ]; then
-      hyprctl keyword monitor "${name},${width}x${height}@60,${pos_x}x${pos_y},${scale}" >/dev/null 2>&1
+      hyprctl eval "hl.monitor({ output = '${name}', mode = '${width}x${height}@60', position = '${pos_x}x${pos_y}', scale = ${scale} })" >/dev/null 2>&1
     fi
   else
-    hyprctl keyword monitor "${name},preferred,${pos_x}x${pos_y},${scale}" >/dev/null 2>&1
+    hyprctl eval "hl.monitor({ output = '${name}', mode = 'preferred', position = '${pos_x}x${pos_y}', scale = ${scale} })" >/dev/null 2>&1
   fi
 }
 
@@ -180,7 +180,7 @@ apply_mode() {
     fi
     set_charge_bypass 1
     if command -v hyprctl >/dev/null 2>&1; then
-      hyprctl --batch "keyword decoration:blur:enabled 1 ; keyword decoration:shadow:enabled 1 ; keyword animations:enabled 1" >/dev/null 2>&1
+      hyprctl eval 'hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })' >/dev/null 2>&1
     fi
     set_internal_refresh "preferred"
 
@@ -217,7 +217,7 @@ apply_mode() {
   case "$target" in
     power-saver)
       if command -v hyprctl >/dev/null 2>&1; then
-        hyprctl --batch "keyword decoration:blur:enabled 0 ; keyword decoration:shadow:enabled 0 ; keyword animations:enabled 0" >/dev/null 2>&1
+        hyprctl eval 'hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = false } })' >/dev/null 2>&1
       fi
       set_internal_refresh "60"
 
@@ -235,7 +235,7 @@ apply_mode() {
 
     balanced|performance)
       if command -v hyprctl >/dev/null 2>&1; then
-        hyprctl --batch "keyword decoration:blur:enabled 1 ; keyword decoration:shadow:enabled 1 ; keyword animations:enabled 1" >/dev/null 2>&1
+        hyprctl eval 'hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })' >/dev/null 2>&1
       fi
       set_internal_refresh "preferred"
 

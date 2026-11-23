@@ -113,10 +113,11 @@ in
 
       # Set up writable pkgRipper directory in Wine prefix (app needs write access for temp folder)
       PKGRIPPER_DIR="$WINEPREFIX/drive_c/pkgripper"
-      if [ ! -d "$PKGRIPPER_DIR" ]; then
-        echo "Setting up pkgRipper in Wine prefix..."
+      if [ ! -d "$PKGRIPPER_DIR" ] || [ "$(cat "$PKGRIPPER_DIR/.version" 2>/dev/null)" != "${version}" ]; then
+        echo "Setting up pkgRipper ${version} in Wine prefix..."
         mkdir -p "$PKGRIPPER_DIR"
-        cp -r "${pkgripper-bin}"/* "$PKGRIPPER_DIR"/
+        cp -rf "${pkgripper-bin}"/* "$PKGRIPPER_DIR"/
+        printf '%s\n' "${version}" > "$PKGRIPPER_DIR/.version"
       fi
 
       # Run pkgRipper from writable directory

@@ -207,28 +207,4 @@ in
     GTK2_RC_FILES = lib.mkForce "${pkgs.matcha-gtk-theme}/share/themes/${palette.theme.gtk}/gtk-2.0/gtkrc";
     GTK_USE_PORTAL = "1";
   };
-
-  home.packages = with pkgs; [ xsettingsd ];
-
-  xdg.configFile."xsettingsd/xsettingsd.conf".text = ''
-    Net/ThemeName "${palette.theme.gtk}"
-    Net/IconThemeName "${palette.theme.icon}"
-    Gtk/CursorThemeName "${palette.theme.cursor}"
-    Net/EnableEventSounds 1
-    EnableInputFeedbackSounds 0
-    Xft/Antialias 1
-    Xft/Hinting 1
-    Xft/HintStyle "hintslight"
-    Xft/RGBA "rgb"
-  '';
-
-  xdg.configFile."autostart/xsettingsd.desktop".text = ''
-    [Desktop Entry]
-    Type=Application
-    Name=xsettingsd
-    Exec=${pkgs.xsettingsd}/bin/xsettingsd
-    Hidden=false
-    NoDisplay=false
-    X-GNOME-Autostart-enabled=true
-  '';
 }

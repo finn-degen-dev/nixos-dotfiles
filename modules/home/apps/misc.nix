@@ -70,20 +70,10 @@ in
     rtl_433
   ];
 
-  # Wipes Downloads directory on shutdown/logout
-  systemd.user.services.clean-downloads = {
-    Unit = {
-      Description = "Clean Downloads folder on logout/shutdown";
-      DefaultDependencies = "no";
-    };
-    Service = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${pkgs.coreutils}/bin/true";
-      ExecStop = "${pkgs.bash}/bin/bash -c 'rm -rf %h/Downloads/*'";
-    };
-    Install.WantedBy = [ "default.target" ];
-  };
+  # Automatically prune files in Downloads older than 7 days
+  systemd.user.tmpfiles.rules = [
+    "e %h/Downloads - - - 7d"
+  ];
 
   xdg.desktopEntries."org.kde.kdenlive" = {
     name = "Kdenlive";

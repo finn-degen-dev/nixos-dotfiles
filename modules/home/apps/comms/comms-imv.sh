@@ -27,9 +27,9 @@ IMV_PID=$!
       sleep 0.05
     done
     if [ -n "$ADDR" ] && [ "$ADDR" != "null" ]; then
-      hyprctl --batch "dispatch setfloating address:$ADDR ; dispatch movetoworkspacesilent special:comms,address:$ADDR" >/dev/null 2>&1
+      hyprctl eval "hl.dispatch(hl.dsp.window.float({ action = 'set', window = 'address:${ADDR}' })) ; hl.dispatch(hl.dsp.window.move({ workspace = 'special:comms', window = 'address:${ADDR}', follow = false }))" >/dev/null 2>&1
       sleep 0.05
-      hyprctl --batch "dispatch focuswindow address:$ADDR ; dispatch resizewindowpixel exact 80% 80%,address:$ADDR ; dispatch centerwindow ; dispatch alterzorder top,address:$ADDR" >/dev/null 2>&1
+      hyprctl eval "hl.dispatch(hl.dsp.focus({ window = 'address:${ADDR}' })) ; local m = hl.get_active_monitor() ; if m then hl.dispatch(hl.dsp.window.resize({ x = math.floor((m.width / m.scale) * 0.8), y = math.floor((m.height / m.scale) * 0.8), relative = false, window = 'address:${ADDR}' })) end ; hl.dispatch(hl.dsp.window.center({ window = 'address:${ADDR}' })) ; hl.dispatch(hl.dsp.window.alter_zorder({ mode = 'top', window = 'address:${ADDR}' }))" >/dev/null 2>&1
     fi
   fi
 ) &

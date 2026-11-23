@@ -22,4 +22,4 @@ keys.txt
 *.age
 
 apply.sh
-core.*
+core.[0-9]*

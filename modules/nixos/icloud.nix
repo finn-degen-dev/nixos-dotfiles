@@ -90,7 +90,6 @@ in
             --poll-interval 30s \
             --umask 022 \
             ${lib.optionalString cfg.readOnly "--read-only"} \
-            --daemon \
             --log-level INFO
         '';
         ExecStop = "${pkgs.rclone}/bin/rclone unmount ${cfg.mountPoint}";

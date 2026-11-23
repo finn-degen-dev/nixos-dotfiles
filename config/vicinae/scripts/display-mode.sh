@@ -69,23 +69,23 @@ fi
 
 [ -z "$CHOICE" ] && exit 0
 
-# Reset stale runtime keywords (disabled flags, mirror links) and ensure DPMS power is on
+# Reset stale runtime rules (disabled flags, mirror links) and ensure DPMS power is on
 prepare_displays() {
   hyprctl reload 2>/dev/null
   sleep 0.15
-  hyprctl dispatch dpms on 2>/dev/null
+  hyprctl dispatch 'hl.dsp.dpms({ action = "on" })' 2>/dev/null
 }
 
 case "$CHOICE" in
 *"PC screen only"*)
   prepare_displays
   for ext in "${EXTERNALS[@]}"; do
-    [ -n "$ext" ] && hyprctl keyword monitor "${ext},disable"
+    [ -n "$ext" ] && hyprctl eval "hl.monitor({ output = '${ext}', disabled = true })"
   done
   if [ -n "$INTERNAL" ]; then
-    hyprctl keyword monitor "${INTERNAL},preferred,0x0,1"
-    hyprctl dispatch dpms on "${INTERNAL}"
-    hyprctl dispatch focusmonitor "${INTERNAL}"
+    hyprctl eval "hl.monitor({ output = '${INTERNAL}', mode = 'preferred', position = '0x0', scale = 1, disabled = false })"
+    hyprctl dispatch "hl.dsp.dpms({ action = 'on', monitor = '${INTERNAL}' })"
+    hyprctl dispatch "hl.dsp.focus({ monitor = '${INTERNAL}' })"
     notify-send -i video-display "Display" "PC screen only (${INTERNAL})"
   fi
   ;;
@@ -97,9 +97,9 @@ case "$CHOICE" in
   fi
   prepare_displays
   # Sync both to 1080p@60Hz matching timing across 120Hz internal and 60Hz external
-  hyprctl keyword monitor "${INTERNAL},1920x1080@60,0x0,1"
-  hyprctl keyword monitor "${EXTERNAL},1920x1080@60,0x0,1,mirror,${INTERNAL}"
-  hyprctl dispatch dpms on
+  hyprctl eval "hl.monitor({ output = '${INTERNAL}', mode = '1920x1080@60', position = '0x0', scale = 1, disabled = false })"
+  hyprctl eval "hl.monitor({ output = '${EXTERNAL}', mode = '1920x1080@60', position = '0x0', scale = 1, mirror = '${INTERNAL}', disabled = false })"
+  hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'
   notify-send -i video-display "Display" "Duplicating ${INTERNAL} on ${EXTERNAL} (1080p@60Hz)"
   ;;
 
@@ -109,9 +109,9 @@ case "$CHOICE" in
     exit 0
   fi
   prepare_displays
-  hyprctl keyword monitor "${INTERNAL},preferred,0x0,1"
-  hyprctl keyword monitor "${EXTERNAL},preferred,auto-right,1"
-  hyprctl dispatch dpms on
+  hyprctl eval "hl.monitor({ output = '${INTERNAL}', mode = 'preferred', position = '0x0', scale = 1, disabled = false })"
+  hyprctl eval "hl.monitor({ output = '${EXTERNAL}', mode = 'preferred', position = 'auto-right', scale = 1, disabled = false })"
+  hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'
   notify-send -i video-display "Display" "Extended right (${INTERNAL} | ${EXTERNAL})"
   ;;
 
@@ -121,9 +121,9 @@ case "$CHOICE" in
     exit 0
   fi
   prepare_displays
-  hyprctl keyword monitor "${INTERNAL},preferred,auto,1"
-  hyprctl keyword monitor "${EXTERNAL},preferred,auto-left,1"
-  hyprctl dispatch dpms on
+  hyprctl eval "hl.monitor({ output = '${INTERNAL}', mode = 'preferred', position = 'auto', scale = 1, disabled = false })"
+  hyprctl eval "hl.monitor({ output = '${EXTERNAL}', mode = 'preferred', position = 'auto-left', scale = 1, disabled = false })"
+  hyprctl dispatch 'hl.dsp.dpms({ action = "on" })'
   notify-send -i video-display "Display" "Extended left (${EXTERNAL} | ${INTERNAL})"
   ;;
 
@@ -133,16 +133,16 @@ case "$CHOICE" in
     exit 0
   fi
   prepare_displays
-  [ -n "$INTERNAL" ] && hyprctl keyword monitor "${INTERNAL},disable"
-  hyprctl keyword monitor "${EXTERNAL},preferred,0x0,1"
-  hyprctl dispatch dpms on "${EXTERNAL}"
-  hyprctl dispatch focusmonitor "${EXTERNAL}"
+  [ -n "$INTERNAL" ] && hyprctl eval "hl.monitor({ output = '${INTERNAL}', disabled = true })"
+  hyprctl eval "hl.monitor({ output = '${EXTERNAL}', mode = 'preferred', position = '0x0', scale = 1, disabled = false })"
+  hyprctl dispatch "hl.dsp.dpms({ action = 'on', monitor = '${EXTERNAL}' })"
+  hyprctl dispatch "hl.dsp.focus({ monitor = '${EXTERNAL}' })"
   notify-send -i video-display "Display" "Second screen only (${EXTERNAL})"
   ;;
 
 *"Reset"*)
   prepare_displays
-  hyprctl keyword monitor ",preferred,auto,1"
+  hyprctl eval 'hl.monitor({ output = "", mode = "preferred", position = "auto", scale = 1 })'
   notify-send -i video-display "Display" "Displays reset to auto-detect"
   ;;
 esac

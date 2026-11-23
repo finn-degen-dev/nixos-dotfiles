@@ -249,11 +249,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1795282109,
-        "narHash": "sha256-jl4CkM8S5RAFFzaM/10xyRGydpxQVkOzL7QtsY+6r94=",
+        "lastModified": 1795461550,
+        "narHash": "sha256-cKJDJV5LpZHv7Ox3/ddKrShWg5XIY7MbkbsaRakZ3YE=",
         "owner": "peternaame-boop",
         "repo": "ytm-player",
-        "rev": "6f496bb8a68e02b1ec2384534cef7d28c8046e1e",
+        "rev": "d9eb82e19dc16ecff83e82ddd121dbd76d6be7a5",
         "type": "github"
       },
       "original": {

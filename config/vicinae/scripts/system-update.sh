@@ -62,6 +62,12 @@ if [ -n "$CUSTOM_BUILDS" ]; then
     exit 1
   fi
 
+  if ! git diff --quiet -- ':!flake.lock' || ! git diff --cached --quiet -- ':!flake.lock'; then
+    notify "critical" "Update Aborted" "Uncommitted local changes detected. Commit or stash before cloud build."
+    echo "Error: Uncommitted changes outside flake.lock would desync the cloud build and rebase." >&2
+    exit 1
+  fi
+
   notify "normal" "System Update" "Heavy compilation needed ($BUILD_COUNT packages). Offloading to GitHub..."
 
   git add flake.lock
@@ -100,8 +106,8 @@ if ! sudo nixos-rebuild switch --flake "$DOTFILES_DIR#nixos-btw"; then
   exit 1
 fi
 
-# 5. Clean unused store garbage and optimize
-sudo nix-collect-garbage -d >/dev/null 2>&1
+# 5. Clean old store garbage while retaining recent generations for rollback
+sudo nix-collect-garbage --delete-older-than 7d >/dev/null 2>&1
 sudo nix-store --optimise >/dev/null 2>&1
 
 notify "normal" "System Update Complete" "System upgraded successfully! ✨"

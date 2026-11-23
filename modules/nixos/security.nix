@@ -3,7 +3,7 @@
 {
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [ 22 53317 8080 9090 ];
+    allowedTCPPorts = [ 22 53317 ];
     allowedUDPPorts = [ 53317 ];
     logRefusedPackets = true;
     logRefusedConnections = true;
@@ -50,22 +50,19 @@
     download-buffer-size = 67108864;
 
     extra-substituters = [
-      "https://nixos.cachix.org"
-      "https://cuda-maintainers.cachix.org"
+      "https://cache.nixos-cuda.org"
       "https://vicinae.cachix.org"
       "https://boredvoidater-dotfiles.cachix.org"
     ];
     trusted-substituters = [
       "https://cache.nixos.org"
-      "https://nixos.cachix.org"
-      "https://cuda-maintainers.cachix.org"
+      "https://cache.nixos-cuda.org"
       "https://vicinae.cachix.org"
       "https://boredvoidater-dotfiles.cachix.org"
     ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "nixos.cachix.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5U="
+      "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
       "vicinae.cachix.org-1:1kDrfienkGHPYbkpNj1mWTr7Fm1+zcenzgTizIcI3oc="
       "boredvoidater-dotfiles.cachix.org-1:Lw1knkMWYS0Zdc/xpPT+98s0nNio12ziYASKjps5790="
     ];
@@ -103,21 +100,6 @@
   };
 
   environment.defaultPackages = lib.mkForce [ ];
-
-  security.audit = {
-    enable = true;
-    rules = [
-      "-w /etc/passwd -p wa -k passwd_changes"
-      "-w /etc/shadow -p wa -k shadow_changes"
-      "-w /etc/sudoers -p wa -k sudoers_changes"
-      "-w /etc/ssh/sshd_config -p wa -k sshd_config_changes"
-      "-a exit,always -F arch=b64 -S mount -S umount2 -k mount"
-      "-a exit,always -F arch=b64 -S setuid -S setgid -S setreuid -S setregid -k priv_esc"
-      "-w /run/current-system/sw/bin/insmod -p x -k modules"
-      "-w /run/current-system/sw/bin/rmmod -p x -k modules"
-      "-w /run/current-system/sw/bin/modprobe -p x -k modules"
-    ];
-  };
 
   systemd.coredump.enable = true;
   systemd.coredump.settings.Coredump = {
