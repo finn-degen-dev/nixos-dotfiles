@@ -53,8 +53,8 @@ DRY_RUN=$(nix build .#nixosConfigurations.nixos-btw.config.system.build.toplevel
 BUILD_COUNT=$(echo "$DRY_RUN" | awk '/derivations will be built:/ {print $2}' || echo "0")
 BUILD_COUNT=${BUILD_COUNT:-0}
 
-# Filter out standard NixOS environment & system wrapper derivations
-CUSTOM_BUILDS=$(echo "$DRY_RUN" | grep -E '\.drv$' | grep -vE '(etc-|unit-|X-Restart|hm-|nixos-system|system-path|user-environment)' || true)
+# Only offload to GitHub Actions when heavy custom packages need rebuilding
+CUSTOM_BUILDS=$(echo "$DRY_RUN" | grep -E '\.drv$' | grep -E '/[a-z0-9]{32}-(nchat-[0-9]|concord-tui-|aseprite-)' || true)
 
 if [ -n "$CUSTOM_BUILDS" ]; then
   if ! gh auth status >/dev/null 2>&1; then

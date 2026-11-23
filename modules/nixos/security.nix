@@ -35,14 +35,26 @@
     '';
   };
 
+  nix.daemonCPUSchedPolicy = "idle";
+  nix.daemonIOSchedClass = "idle";
+
   nix.settings = {
     allowed-users = [ "@wheel" ];
     require-sigs = true;
+
+    max-jobs = 2;
+    cores = 4;
 
     http-connections = 50;
     max-substitution-jobs = 32;
     download-buffer-size = 67108864;
 
+    extra-substituters = [
+      "https://nixos.cachix.org"
+      "https://cuda-maintainers.cachix.org"
+      "https://vicinae.cachix.org"
+      "https://boredvoidater-dotfiles.cachix.org"
+    ];
     trusted-substituters = [
       "https://cache.nixos.org"
       "https://nixos.cachix.org"
@@ -54,7 +66,7 @@
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       "nixos.cachix.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5U="
-      "vicinae.cachix.org-1:b67slZMcPnvEtL5mB5g7pSmD898Wmsr0pIgb78a/Xlg="
+      "vicinae.cachix.org-1:1kDrfienkGHPYbkpNj1mWTr7Fm1+zcenzgTizIcI3oc="
       "boredvoidater-dotfiles.cachix.org-1:Lw1knkMWYS0Zdc/xpPT+98s0nNio12ziYASKjps5790="
     ];
   };

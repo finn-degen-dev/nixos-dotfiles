@@ -26,7 +26,7 @@ jobs:
         with:
           extra_nix_config: |
             trusted-substituters = https://cache.nixos.org https://cuda-maintainers.cachix.org https://vicinae.cachix.org
-            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5U= vicinae.cachix.org-1:b67slZMcPnvEtL5mB5g7pSmD898Wmsr0pIgb78a/Xlg=
+            trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5U= vicinae.cachix.org-1:1kDrfienkGHPYbkpNj1mWTr7Fm1+zcenzgTizIcI3oc=
 
       - name: Setup Cachix
         uses: cachix/cachix-action@v15
@@ -35,6 +35,7 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
       - name: Update Flake Lock
+        if: github.event_name == 'schedule'
         run: nix flake update
 
       - name: Build & Cache Custom Heavy Packages
@@ -48,6 +49,7 @@ jobs:
           nix eval .#nixosConfigurations.nixos-btw.config.system.build.toplevel.drvPath
 
       - name: Push Updated flake.lock
+        if: github.event_name == 'schedule'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
