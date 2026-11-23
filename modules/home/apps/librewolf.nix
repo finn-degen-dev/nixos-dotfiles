@@ -1,59 +1,59 @@
-{ pkgs, config, lib, vicinae, ... }:
+{ pkgs, config, lib, vicinae, palette, ... }:
 
 let
   vicinaePkg = vicinae.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  c = palette.colors;
 
   userChromeContent = ''
     :root {
-      --toolbar-bgcolor: #131418 !important;
-      --toolbar-color: #e6e6ea !important;
-      --lwt-accent-color: #0d0e11 !important;
-      --lwt-text-color: #e6e6ea !important;
-      --toolbox-bgcolor: #0d0e11 !important;
-      --toolbox-bgcolor-inactive: #0d0e11 !important;
-      --tabs-navbar-separator-color: #1e1f25 !important;
-      --arrowpanel-background: #0d0e11 !important;
-      --arrowpanel-color: #e6e6ea !important;
-      --arrowpanel-border-color: #27282f !important;
-      --panel-background: #0d0e11 !important;
-      --panel-color: #e6e6ea !important;
-      --panel-border-color: #27282f !important;
-      --button-hover-bgcolor: #18191e !important;
-      --button-active-bgcolor: #27282f !important;
-      --autocomplete-popup-background: #0d0e11 !important;
-      --autocomplete-popup-color: #e6e6ea !important;
-      --autocomplete-popup-highlight-background: #27282f !important;
+      --toolbar-bgcolor: ${c.mantle} !important;
+      --toolbar-color: ${c.text} !important;
+      --lwt-accent-color: ${c.base} !important;
+      --lwt-text-color: ${c.text} !important;
+      --toolbox-bgcolor: ${c.base} !important;
+      --toolbox-bgcolor-inactive: ${c.base} !important;
+      --tabs-navbar-separator-color: ${c.borderSubtle} !important;
+      --arrowpanel-background: ${c.base} !important;
+      --arrowpanel-color: ${c.text} !important;
+      --arrowpanel-border-color: ${c.border} !important;
+      --panel-background: ${c.base} !important;
+      --panel-color: ${c.text} !important;
+      --panel-border-color: ${c.border} !important;
+      --button-hover-bgcolor: ${c.surface0} !important;
+      --button-active-bgcolor: ${c.surface1} !important;
+      --autocomplete-popup-background: ${c.base} !important;
+      --autocomplete-popup-color: ${c.text} !important;
+      --autocomplete-popup-highlight-background: ${c.surface1} !important;
       --chrome-content-separator-color: transparent !important;
-      --focus-outline-color: #4c50bc !important;
-      --toolbar-field-focus-border-color: #4c50bc !important;
-      --toolbar-field-border-color: #27282f !important;
-      --accent-color: #4c50bc !important;
-      --toolbar-field-background-color: #0d0e11 !important;
-      --toolbar-field-focus-background-color: #0d0e11 !important;
-      --toolbar-field-color: #e6e6ea !important;
+      --focus-outline-color: ${c.accent} !important;
+      --toolbar-field-focus-border-color: ${c.accent} !important;
+      --toolbar-field-border-color: ${c.border} !important;
+      --accent-color: ${c.accent} !important;
+      --toolbar-field-background-color: ${c.base} !important;
+      --toolbar-field-focus-background-color: ${c.base} !important;
+      --toolbar-field-color: ${c.text} !important;
       --toolbar-field-focus-color: #ffffff !important;
-      --lwt-toolbar-field-background-color: #0d0e11 !important;
-      --lwt-toolbar-field-focus: #0d0e11 !important;
-      --lwt-toolbar-field-color: #e6e6ea !important;
+      --lwt-toolbar-field-background-color: ${c.base} !important;
+      --lwt-toolbar-field-focus: ${c.base} !important;
+      --lwt-toolbar-field-color: ${c.text} !important;
       --lwt-toolbar-field-focus-color: #ffffff !important;
-      --urlbar-box-bgcolor: #0d0e11 !important;
-      --urlbar-box-hover-bgcolor: #18191e !important;
-      --urlbar-box-focus-bgcolor: #0d0e11 !important;
-      --urlbar-popup-url-color: #4c50bc !important;
-      --urlbar-popup-action-color: #4c50bc !important;
-      --tab-selected-bgcolor: #18191e !important;
-      --tab-hover-background-color: #18191e !important;
-      --sidebar-background-color: #0d0e11 !important;
-      --sidebar-text-color: #e6e6ea !important;
-      --sidebar-border-color: #1e1f25 !important;
+      --urlbar-box-bgcolor: ${c.base} !important;
+      --urlbar-box-hover-bgcolor: ${c.surface0} !important;
+      --urlbar-box-focus-bgcolor: ${c.base} !important;
+      --urlbar-popup-url-color: ${c.accent} !important;
+      --urlbar-popup-action-color: ${c.accent} !important;
+      --tab-selected-bgcolor: ${c.surface0} !important;
+      --tab-hover-background-color: ${c.surface0} !important;
+      --sidebar-background-color: ${c.base} !important;
+      --sidebar-text-color: ${c.text} !important;
+      --sidebar-border-color: ${c.borderSubtle} !important;
     }
 
     ::selection, *::-moz-selection {
-      background-color: #4c50bc !important;
+      background-color: ${c.accent} !important;
       color: #ffffff !important;
     }
 
-    /* Strip window controls, spacers, and redundant navigation/action buttons */
     .titlebar-buttonbox-container,
     .titlebar-spacer,
     #back-button,
@@ -88,28 +88,27 @@ let
     #tabbrowser-tabpanels,
     #TabsToolbar,
     #titlebar {
-      background-color: #0d0e11 !important;
+      background-color: ${c.base} !important;
     }
 
     #navigator-toolbox {
-      background-color: #0d0e11 !important;
-      border-bottom: 1px solid #1e1f25 !important;
+      background-color: ${c.base} !important;
+      border-bottom: 1px solid ${c.borderSubtle} !important;
     }
 
     #nav-bar {
-      background-color: #131418 !important;
+      background-color: ${c.mantle} !important;
       box-shadow: none !important;
       padding: 2px 6px !important;
     }
 
-    /* Force all URL and search input layers to #0d0e11, stripping GTK #333333 */
     #urlbar,
     #urlbar * {
-      --toolbar-field-background-color: #0d0e11 !important;
-      --toolbar-field-focus-background-color: #0d0e11 !important;
-      --lwt-toolbar-field-background-color: #0d0e11 !important;
-      --lwt-toolbar-field-focus: #0d0e11 !important;
-      --urlbar-box-bgcolor: #0d0e11 !important;
+      --toolbar-field-background-color: ${c.base} !important;
+      --toolbar-field-focus-background-color: ${c.base} !important;
+      --lwt-toolbar-field-background-color: ${c.base} !important;
+      --lwt-toolbar-field-focus: ${c.base} !important;
+      --urlbar-box-bgcolor: ${c.base} !important;
     }
 
     #urlbar,
@@ -125,17 +124,17 @@ let
     input.textbox-input {
       appearance: none !important;
       -moz-appearance: none !important;
-      background-color: #0d0e11 !important;
-      background: #0d0e11 !important;
-      border-color: #27282f !important;
-      color: #e6e6ea !important;
+      background-color: ${c.base} !important;
+      background: ${c.base} !important;
+      border-color: ${c.border} !important;
+      color: ${c.text} !important;
     }
 
     #urlbar-background,
     .urlbar-background,
     #searchbar,
     .searchbar-textbox {
-      border: 1px solid #27282f !important;
+      border: 1px solid ${c.border} !important;
       border-radius: 8px !important;
       box-shadow: none !important;
     }
@@ -145,32 +144,31 @@ let
     #urlbar[focused="true"] > #urlbar-background,
     #urlbar[focused="true"] > .urlbar-background,
     #searchbar:focus-within {
-      border-color: #4c50bc !important;
-      box-shadow: 0 0 0 1px #4c50bc !important;
+      border-color: ${c.accent} !important;
+      box-shadow: 0 0 0 1px ${c.accent} !important;
     }
 
     #urlbar-input, .searchbar-textbox {
-      font-family: "JetBrainsMono Nerd Font", monospace !important;
+      font-family: "${palette.font.mono}", monospace !important;
       font-size: 13px !important;
     }
 
     #identity-box {
       background-color: transparent !important;
-      color: #b5b7c0 !important;
+      color: ${c.subtext0} !important;
     }
 
     #identity-box:hover {
-      background-color: #18191e !important;
+      background-color: ${c.surface0} !important;
       border-radius: 6px !important;
     }
 
     #urlbar-search-mode-indicator {
-      background-color: #4c50bc !important;
+      background-color: ${c.accent} !important;
       color: #ffffff !important;
       border-radius: 6px !important;
     }
 
-    /* Megabar expansion & search results dropdown */
     #urlbar[open] > #urlbar-background,
     #urlbar[open] > .urlbar-background,
     #urlbar[breakout][breakout-extend] > #urlbar-background,
@@ -186,61 +184,59 @@ let
     .search-panel-one-offs-header {
       appearance: none !important;
       -moz-appearance: none !important;
-      background-color: #0d0e11 !important;
-      background: #0d0e11 !important;
-      border-color: #4c50bc !important;
-      color: #e6e6ea !important;
+      background-color: ${c.base} !important;
+      background: ${c.base} !important;
+      border-color: ${c.accent} !important;
+      color: ${c.text} !important;
     }
 
     .urlbarView-row,
     .urlbarView-row-inner {
       appearance: none !important;
       -moz-appearance: none !important;
-      background-color: #0d0e11 !important;
-      background: #0d0e11 !important;
+      background-color: ${c.base} !important;
+      background: ${c.base} !important;
       border-radius: 6px !important;
     }
 
     .urlbarView-row:hover,
     .urlbarView-row:hover .urlbarView-row-inner {
-      background-color: #18191e !important;
-      background: #18191e !important;
+      background-color: ${c.surface0} !important;
+      background: ${c.surface0} !important;
     }
 
     .urlbarView-row[selected],
     .urlbarView-row[selected] .urlbarView-row-inner {
-      background-color: #27282f !important;
-      background: #27282f !important;
+      background-color: ${c.surface1} !important;
+      background: ${c.surface1} !important;
     }
 
     .urlbarView-row[selected] .urlbarView-title {
       color: #ffffff !important;
     }
 
-    /* Query match highlights in purple #4c50bc */
     .urlbarView-title strong,
     .urlbarView-url strong {
-      color: #4c50bc !important;
+      color: ${c.accent} !important;
       font-weight: 600 !important;
     }
 
     .urlbarView-row .urlbarView-action,
     .urlbarView-type-icon {
-      color: #4c50bc !important;
-      fill: #4c50bc !important;
+      color: ${c.accent} !important;
+      fill: ${c.accent} !important;
     }
 
     .search-one-offs .searchbar-engine-one-off-item:hover {
-      background-color: #18191e !important;
+      background-color: ${c.surface0} !important;
     }
 
     .search-one-offs .searchbar-engine-one-off-item[selected] {
-      background-color: #4c50bc !important;
+      background-color: ${c.accent} !important;
     }
 
-    /* Compact tab bar with purple accent */
     tab {
-      font-family: "JetBrainsMono Nerd Font", monospace !important;
+      font-family: "${palette.font.mono}", monospace !important;
       font-size: 12px !important;
     }
 
@@ -251,18 +247,18 @@ let
     }
 
     .tabbrowser-tab[selected="true"] .tab-background {
-      background-color: #18191e !important;
-      border: 1px solid #3a3c48 !important;
-      border-bottom: 2px solid #4c50bc !important;
+      background-color: ${c.surface0} !important;
+      border: 1px solid ${c.surface2} !important;
+      border-bottom: 2px solid ${c.accent} !important;
       box-shadow: none !important;
     }
 
     .tabbrowser-tab:hover:not([selected="true"]) .tab-background {
-      background-color: #18191e !important;
+      background-color: ${c.surface0} !important;
     }
 
     .tab-label {
-      color: #b5b7c0 !important;
+      color: ${c.subtext0} !important;
     }
 
     .tabbrowser-tab[selected="true"] .tab-label {
@@ -270,69 +266,67 @@ let
       font-weight: 500 !important;
     }
 
-    /* Sidebar & vertical tabs */
     #sidebar-box,
     #sidebar-header,
     #sidebar-main,
     sidebar-main {
-      background-color: #0d0e11 !important;
-      color: #e6e6ea !important;
-      border-color: #1e1f25 !important;
+      background-color: ${c.base} !important;
+      color: ${c.text} !important;
+      border-color: ${c.borderSubtle} !important;
     }
 
-    /* Popups & context menus */
     menupopup,
     panel,
     .panel-subview-body,
     panelview {
-      --arrowpanel-background: #0d0e11 !important;
-      --arrowpanel-color: #e6e6ea !important;
-      --arrowpanel-border-color: #27282f !important;
-      --panel-background: #0d0e11 !important;
-      --panel-color: #e6e6ea !important;
-      --panel-border-color: #27282f !important;
-      background-color: #0d0e11 !important;
-      color: #e6e6ea !important;
-      border-color: #27282f !important;
+      --arrowpanel-background: ${c.base} !important;
+      --arrowpanel-color: ${c.text} !important;
+      --arrowpanel-border-color: ${c.border} !important;
+      --panel-background: ${c.base} !important;
+      --panel-color: ${c.text} !important;
+      --panel-border-color: ${c.border} !important;
+      background-color: ${c.base} !important;
+      color: ${c.text} !important;
+      border-color: ${c.border} !important;
     }
 
     menuitem:hover,
     menu:hover,
     .subviewbutton:hover {
-      background-color: #18191e !important;
+      background-color: ${c.surface0} !important;
     }
 
     #PersonalToolbar {
-      background-color: #131418 !important;
-      color: #e6e6ea !important;
-      border-bottom: 1px solid #1e1f25 !important;
+      background-color: ${c.mantle} !important;
+      color: ${c.text} !important;
+      border-bottom: 1px solid ${c.borderSubtle} !important;
     }
 
     #statuspanel-label {
-      background-color: #131418 !important;
-      color: #e6e6ea !important;
-      border: 1px solid #27282f !important;
+      background-color: ${c.mantle} !important;
+      color: ${c.text} !important;
+      border: 1px solid ${c.border} !important;
       border-radius: 6px !important;
     }
 
     findbar {
-      background-color: #131418 !important;
+      background-color: ${c.mantle} !important;
       border-top: 1px solid #2c2d35 !important;
-      color: #e6e6ea !important;
+      color: ${c.text} !important;
       border-radius: 8px 8px 0 0 !important;
     }
 
     findbar textbox:focus {
-      outline: 1px solid #4c50bc !important;
+      outline: 1px solid ${c.accent} !important;
     }
   '';
 
   userContentContent = ''
     @-moz-document url("about:home"), url("about:newtab"), url("about:blank"), url("about:privatebrowsing") {
       html, html.private, body, #root, .activity-stream, .outer-wrapper, .private-browsing-container {
-        background-color: #0d0e11 !important;
-        background: #0d0e11 !important;
-        color: #e6e6ea !important;
+        background-color: ${c.base} !important;
+        background: ${c.base} !important;
+        color: ${c.text} !important;
       }
       .search-inner-wrapper,
       .search-handoff-button,
@@ -341,10 +335,10 @@ let
       .search-wrapper input {
         appearance: none !important;
         -moz-appearance: none !important;
-        background-color: #0d0e11 !important;
-        background: #0d0e11 !important;
-        border: 1px solid #27282f !important;
-        color: #e6e6ea !important;
+        background-color: ${c.base} !important;
+        background: ${c.base} !important;
+        border: 1px solid ${c.border} !important;
+        color: ${c.text} !important;
         border-radius: 8px !important;
       }
       .search-inner-wrapper:focus-within,
@@ -352,8 +346,8 @@ let
       .search-wrapper .search-handoff-button:focus,
       input[type="search"]:focus,
       .search-wrapper input:focus {
-        border-color: #4c50bc !important;
-        box-shadow: 0 0 0 1px #4c50bc !important;
+        border-color: ${c.accent} !important;
+        box-shadow: 0 0 0 1px ${c.accent} !important;
       }
     }
   '';
@@ -423,52 +417,13 @@ in
         "browser.theme.content-theme" = 0;
         "layout.css.prefers-color-scheme.content-override" = 0;
         "ui.systemUsesDarkTheme" = 1;
-        "widget.non-native-theme.gtk.accent-color" = "#4c50bc";
+        "widget.non-native-theme.gtk.accent-color" = c.accent;
         "widget.gtk.rounded-bottom-corners.enabled" = false;
         "widget.wayland.opaque-region.enabled" = true;
         "extensions.enabledScopes" = 15;
         "extensions.autoDisableScopes" = 0;
         "extensions.installDistroAddons" = true;
         "extensions.vimium-c.excludedUrls" = "";
-        "extensions.leechblockng.blockSets" = builtins.toJSON [
-          {
-            name = "Social Media Limit";
-            enabled = true;
-            timeLimit = {
-              enabled = true;
-              limitMinutes = 20;
-              resetPeriod = "daily";
-              blockAfterLimit = true;
-              showCountdown = true;
-              warningMinutes = 5;
-            };
-            sites = [
-              "*://*.twitter.com/*"
-              "*://*.x.com/*"
-              "*://*.facebook.com/*"
-              "*://*.instagram.com/*"
-              "*://*.reddit.com/*"
-              "*://*.youtube.com/*"
-              "*://*.tiktok.com/*"
-              "*://*.linkedin.com/*"
-              "*://*.threads.net/*"
-              "*://*.bluesky.social/*"
-              "*://*.mastodon.social/*"
-              "*://*.discord.com/*"
-            ];
-            wildcard = true;
-            when = {
-              enabled = true;
-              days = [ 0 1 2 3 4 5 6 ];
-              timeRange = "00:00-23:59";
-            };
-            blockMessage = "Daily 20-minute social media limit reached. Come back tomorrow! 🌱";
-            lock = {
-              enabled = false;
-              password = "";
-            };
-          }
-        ];
         "extensions.tampermonkey.scriptSync" = true;
       };
 
@@ -477,7 +432,7 @@ in
 
       extraConfig = ''
         user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
-        user_pref("widget.non-native-theme.gtk.accent-color", "#4c50bc");
+        user_pref("widget.non-native-theme.gtk.accent-color", "${c.accent}");
         user_pref("widget.gtk.rounded-bottom-corners.enabled", false);
         user_pref("widget.wayland.opaque-region.enabled", true);
         user_pref("browser.theme.toolbar-theme", 0);
@@ -495,8 +450,7 @@ in
     };
   };
 
-  # Ensure userChrome.css and userContent.css are applied to any extra/imported LibreWolf profiles
-  home.activation.librewolfCustomCss = lib.hm.dag.entryAfter ["writeBoundary"] ''
+  home.activation.librewolfCustomCss = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     for dir in ~/.librewolf/*; do
       if [ -d "$dir" ] && [ ! -L "$dir/chrome/userChrome.css" ] && ([ -f "$dir/prefs.js" ] || [[ "$dir" == *default* ]]); then
         mkdir -p "$dir/chrome"

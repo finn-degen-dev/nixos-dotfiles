@@ -1,6 +1,5 @@
 -- ============================================================================
 -- Hyprland 0.57+ Configuration
--- Translated from legacy hyprland.conf
 -- ============================================================================
 
 local mainMod = "SUPER"
@@ -104,20 +103,16 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd(
 		"dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_RUNTIME_DIR GTK_THEME XCURSOR_THEME XCURSOR_SIZE QT_QPA_PLATFORMTHEME"
 	)
-	hl.exec_cmd("nm-applet")
-	hl.exec_cmd("cbatticon")
 	hl.exec_cmd("waypaper --restore")
 	hl.exec_cmd("polkit-gnome-agent")
 	hl.exec_cmd("vicinae server")
 	hl.exec_cmd("waybar")
-	hl.exec_cmd("mako")
 	hl.exec_cmd("comms-scratchpad")
 end)
 
 -- ----------------------------------------------------------------------------
 -- Window Rules & Scratchpads
 -- ----------------------------------------------------------------------------
--- Unified Comms TUI Scratchpad (WhatsApp, Telegram, Discord, Gmail)
 hl.window_rule({
 	name = "comms-scratchpad",
 	match = { class = "^(comms-scratchpad)$" },
@@ -127,7 +122,6 @@ hl.window_rule({
 	center = true,
 })
 
--- Music TUI Scratchpad (ytm-player)
 hl.window_rule({
 	name = "music-scratchpad",
 	match = { class = "^(music-scratchpad)$" },
@@ -137,7 +131,6 @@ hl.window_rule({
 	center = true,
 })
 
--- Waypaper Wallpaper Picker
 hl.window_rule({
 	name = "waypaper",
 	match = { class = "^([Ww]aypaper)$" },
@@ -146,7 +139,6 @@ hl.window_rule({
 	center = true,
 })
 
--- UltraStar
 hl.window_rule({
 	name = "ultrastar-rules",
 	match = { title = "^(UltraStar.*)$" },
@@ -190,7 +182,6 @@ hl.bind("Print", hl.dsp.exec_cmd("grim - | wl-copy"))
 hl.bind(mainMod .. " + S", hl.dsp.exec_cmd('grim -g "$(slurp)" - | wl-copy'))
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("bash ~/.config/vicinae/scripts/qr-scanner.sh"))
 hl.bind(mainMod .. " + SHIFT + T", hl.dsp.exec_cmd("bash ~/.config/vicinae/scripts/ocr.sh"))
-hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("bash ~/.config/vicinae/scripts/web-search.sh"))
 hl.bind(mainMod .. " + SHIFT + A", hl.dsp.exec_cmd("wl-clicker toggle"))
 
 -- Audio & Brightness

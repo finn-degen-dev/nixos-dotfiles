@@ -1,4 +1,4 @@
-{ pkgs, lib, config, ... }:
+{ pkgs, lib, ... }:
 
 let
   localsend-wrapped = pkgs.symlinkJoin {
@@ -18,78 +18,58 @@ let
   };
 in
 {
-  home.packages = with pkgs;[
-    tumbler
-    obsidian
+  home.packages = with pkgs; [
+    # Desktop & system utilities
     brightnessctl
     wireplumber
     lxappearance
-    prismlauncher
-    jdk17
-    localsend-wrapped
-    mpv
-    bitwarden-desktop
-    ente-auth
-    gh
-
-    chiaki-ng
-
-    peek
-    gifski
-
     gnome-themes-extra
-
-    aseprite
-
-    tenacity
-
-    gimp
-    rawtherapee
-
     gsettings-desktop-schemas
     pamixer
     xfconf
-    repomix
     bluetui
-    pavucontrol
-
     xsel
     xclip
-    wl-clipboard
-
     grim
     slurp
     qt5.qtwayland
-
-    gqrx
-    sdrpp
-    rtl_433
-
-    xdg-utils
-
-    blender
-
     wl-clicker
+    zbar
+    tesseract
+    hyprpicker
 
-    ghidra
+    # Productivity, security & transfer
+    obsidian
+    localsend-wrapped
+    bitwarden-desktop
+    ente-auth
+    paisa
+    repomix
+    python3
+    jq
 
+    # Media, creative & audio/video
+    mpv
+    peek
+    gifski
+    aseprite
+    tenacity
+    gimp
+    rawtherapee
+    blender
     kdePackages.kdenlive
     obs-studio
 
-    jq
+    # Gaming & reverse engineering / SDR
+    prismlauncher
+    jdk17
+    chiaki-ng
     steamcmd
-    python3
-
-    paisa # Financial tracker
-
-    zbar # Provides zbarimg for reading QR codes
-    tesseract # Optical Character Recognition (OCR) for screen scraping
-    hyprpicker # Global color picker
+    ghidra
+    gqrx
+    sdrpp
+    rtl_433
   ];
-
-  sops.defaultSopsFile = ../../../secrets/secrets.yaml;
-  sops.defaultSopsFormat = "yaml";
-  sops.age.keyFile = "/home/boredvoidater/.config/sops/age/keys.txt";
 
   # Wipes Downloads directory on shutdown/logout
   systemd.user.services.clean-downloads = {

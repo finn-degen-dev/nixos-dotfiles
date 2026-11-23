@@ -1,10 +1,12 @@
-{ config, pkgs, sops-nix, vicinae, ... }:
+{ config, pkgs, sops-nix, vicinae, meta, ... }:
 
 {
   imports = [
     vicinae.homeManagerModules.default
-    ./modules/home/dotfiles-path.nix
     sops-nix.homeManagerModules.sops
+
+    ./modules/home/dotfiles-path.nix
+    ./modules/home/sops.nix
 
     ./modules/home/desktop/theme.nix
     ./modules/home/desktop/icons.nix
@@ -12,14 +14,14 @@
     ./modules/home/desktop/notifications.nix
     ./modules/home/desktop/vicinae.nix
     ./modules/home/desktop/nvim.nix
-    ./modules/home/desktop/gtk.nix
-    ./modules/home/desktop/mako.nix
     ./modules/home/desktop/environment.nix
 
     ./modules/home/terminal/git.nix
     ./modules/home/terminal/bash.nix
     ./modules/home/terminal/fzf.nix
 
+    ./modules/home/apps/alacritty.nix
+    ./modules/home/apps/kitty.nix
     ./modules/home/apps/neovim.nix
     ./modules/home/apps/librewolf.nix
     ./modules/home/apps/anki.nix
@@ -27,20 +29,18 @@
     ./modules/home/apps/misc.nix
     ./modules/home/apps/cad.nix
     ./modules/home/apps/media.nix
-    ./modules/home/apps/alacritty.nix
     ./modules/home/apps/free-claude-code.nix
     ./modules/home/apps/todo.nix
     ./modules/home/apps/pkgripper/pkgripper.nix
     ./modules/home/apps/flatpak-auto-update.nix
-    ./modules/home/apps/karaoke.nix
+    ./modules/home/apps/karaoke/default.nix
     ./modules/home/apps/kbm2pad.nix
     ./modules/home/apps/webapps.nix
-    ./modules/home/apps/comms.nix
+    ./modules/home/apps/comms/default.nix
   ];
 
-
-  home.username = "boredvoidater";
-  home.stateVersion = "25.05";
+  home.username = meta.username;
+  home.stateVersion = meta.stateVersion;
 
   xdg.configFile."Thunar/uca.xml" = {
     force = true;

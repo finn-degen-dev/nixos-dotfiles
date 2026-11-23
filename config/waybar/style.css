@@ -8,8 +8,8 @@
 }
 
 window#waybar {
-  background: rgba(15, 16, 21, 1);
-  color: #e8e8e8;
+  background: #0d0e11;
+  color: #e6e6ea;
 }
 
 #workspaces {
@@ -19,18 +19,18 @@ window#waybar {
 #workspaces button {
   padding: 0 4px;
   margin: 0 1px;
-  color: #888;
+  color: #8c8f9a;
   background: transparent;
   transition: color 0.15s;
 }
 
 #workspaces button.active {
-  color: #fff;
+  color: #ffffff;
   font-weight: 600;
 }
 
 #workspaces button:hover {
-  color: #ccc;
+  color: #c8cacf;
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -41,7 +41,7 @@ window#waybar {
 #pulseaudio,
 #battery {
   padding: 0 8px;
-  color: #e8e8e8;
+  color: #e6e6ea;
 }
 
 #custom-usb.empty {
@@ -49,44 +49,43 @@ window#waybar {
   margin: 0;
 }
 
-/* Gentle separation before power/status instead of 64px */
 #custom-power {
   margin-left: 10px;
 }
 
 #custom-power.power-saver {
-  color: #30d158;
+  color: #3bb36a;
 }
 
 #custom-power.performance {
-  color: #ff9f0a;
+  color: #e07a3c;
 }
 
 #custom-power.wall-plugged {
-  color: #0a84ff;
+  color: #3a86ff;
 }
 
 #custom-power.balanced {
-  color: #e8e8e8;
+  color: #e6e6ea;
 }
 
 #battery.warning {
-  color: #ff9f0a;
+  color: #d4a34b;
 }
 
 #battery.critical {
-  color: #ff453a;
+  color: #e05555;
 }
 
 #battery.charging {
-  color: #30d158;
+  color: #3bb36a;
 }
 
 #pulseaudio.muted {
-  color: #888;
+  color: #8c8f9a;
 }
 
 #clock {
   padding: 0 12px 0 8px;
-  color: #e8e8e8;
+  color: #e6e6ea;
 }

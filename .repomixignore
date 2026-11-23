@@ -1,14 +1,17 @@
-# Add patterns to ignore here, one per line
-# Example:
-# *.log
-# tmp/
-config/nvim/LICENSE
+# Encrypted secrets, lockfiles, and static boilerplate
+secrets/secrets.yaml
 *.lock
+config/nvim/lazyvim.json
+config/nvim/.neoconf.json
+config/nvim/README.md
+config/nvim/stylua.toml
+config/nvim/LICENSE
+config/icons/*.svg
+config/Leechblock/leechblock-config.txt
 config/firefoxpwa/**/*
 work.sh
 
-
-# patches and mcps
-modules/home/apps/nchat/patch.py
-modules/home/apps/deals-mcp/server.py
-modules/home/apps/nchat/inline_media.cpp
+# Heavy self-contained app patches / MCP subprojects (include on demand via `pack-full`)
+modules/home/apps/nchat/**
+modules/home/apps/usdb-syncer/**
+modules/home/apps/deals-mcp/**

@@ -88,18 +88,18 @@ def battery_bar_markup(pct: int, charging: bool = False) -> str:
     pct = max(0, min(100, int(round(pct))))
     if charging:
         icon = BAT_CHARGING
-        color = "#30d158"
+        color = "#3bb36a"
     else:
         idx = min(9, max(0, pct // 10))
         icon = BAT_ICONS[idx]
         if pct >= 60:
-            color = "#30d158"
+            color = "#3bb36a"
         elif pct >= 25:
-            color = "#e8e8e8"
+            color = "#e6e6ea"
         elif pct >= 15:
-            color = "#ff9f0a"
+            color = "#d4a34b"
         else:
-            color = "#ff453a"
+            color = "#e05555"
     return f"<span foreground='{color}'>{icon}</span>"
 
 

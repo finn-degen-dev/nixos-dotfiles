@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, meta, ... }:
 
 {
   imports =
@@ -14,16 +14,16 @@
       ./modules/nixos/icloud.nix
     ];
 
-  networking.hostName = "nixos-btw";
+  networking.hostName = meta.hostname;
 
   # iCloud Drive integration via rclone (main password + 2FA)
   services.icloud-drive = {
     enable = true;
-    appleId = "boredvoidater@icloud.com";
+    appleId = meta.appleId;
     mountPoint = "/mnt/icloud-drive";
     readOnly = true;
-    mountUser = "boredvoidater";
+    mountUser = meta.username;
   };
 
-  system.stateVersion = "25.05";
+  system.stateVersion = meta.stateVersion;
 }

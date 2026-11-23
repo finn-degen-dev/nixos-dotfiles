@@ -1,10 +1,11 @@
-{ config, pkgs, lib, ... }:
+{ pkgs, meta, ... }:
+
 {
   programs.git = {
     enable = true;
     settings = {
-      user.name = "BoredVoidAter";
-      user.email = "boredvoideater@proton.me";
+      user.name = meta.gitName;
+      user.email = meta.gitEmail;
       credential.helper = "${pkgs.gh}/bin/gh auth git-credential";
       filter.lfs = {
         clean = "${pkgs.git-lfs}/bin/git-lfs clean -- %f";
@@ -15,7 +16,6 @@
     };
   };
 
-  # Ensure git-lfs and gh are available
   home.packages = with pkgs; [
     git-lfs
     gh

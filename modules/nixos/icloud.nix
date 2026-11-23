@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, meta, ... }:
 
 let
   cfg = config.services.icloud-drive;
@@ -16,29 +16,24 @@ in
       default = "/mnt/icloud-drive";
       description = "Mount point for iCloud Drive";
     };
-    # Read-only mount (safer - rclone iCloud is experimental)
     readOnly = lib.mkOption {
       type = lib.types.bool;
       default = true;
       description = "Mount read-only (rclone iCloud is experimental)";
     };
-    # User to run the mount service as (for tmpfiles mount point ownership)
     mountUser = lib.mkOption {
       type = lib.types.str;
-      default = "boredvoidater";
+      default = meta.username;
       description = "User for mount point ownership and user service";
     };
   };
 
   config = lib.mkIf cfg.enable {
-    # rclone with iCloud support
     environment.systemPackages = with pkgs; [
       rclone
       fuse3
-      # User-friendly mount scripts
       (writeShellScriptBin "icloud-mount" ''
         #!/bin/sh
-        # Mount iCloud Drive (uses rclone config with cached trust token)
         MOUNT_POINT="${cfg.mountPoint}"
         mkdir -p "$MOUNT_POINT"
         if mountpoint -q "$MOUNT_POINT"; then
@@ -66,19 +61,16 @@ in
       '')
       (writeShellScriptBin "icloud-config" ''
         #!/bin/sh
-        # Interactive rclone config for iCloud (main password + 2FA)
         echo "Configuring iCloud remote 'icloud'..."
         echo "Use your MAIN Apple ID password (not app-specific) + 2FA code"
         ${pkgs.rclone}/bin/rclone config
       '')
     ];
 
-    # Create mount point (owned by user)
     systemd.tmpfiles.rules = [
       "d ${cfg.mountPoint} 0755 ${config.users.users.${cfg.mountUser}.name} ${config.users.users.${cfg.mountUser}.group} - -"
     ];
 
-    # User-level systemd service (starts on login, runs in your session)
     systemd.user.services.icloud-drive = {
       description = "iCloud Drive FUSE mount via rclone (user service)";
       documentation = [ "https://rclone.org/icloud/" ];
@@ -104,9 +96,7 @@ in
         ExecStop = "${pkgs.rclone}/bin/rclone unmount ${cfg.mountPoint}";
         Restart = "on-failure";
         RestartSec = 10;
-        # Runs as your user automatically - accesses ~/.config/rclone/rclone.conf
       };
-      # Enable on login
       wantedBy = [ "default.target" ];
     };
   };

@@ -1,6 +1,7 @@
-{ pkgs, config, ... }:
+{ pkgs, config, meta, palette, ... }:
 
 let
+  c = palette.colors;
   powerSupplyPerms = pkgs.writeShellScript "power-supply-perms" ''
     for f in \
       /sys/class/power_supply/BAT*/charge_control_start_threshold \
@@ -62,19 +63,19 @@ in
     enable = true;
     cageArgs = [ "-s" "-m" "last" ];
     theme = {
-      name = "Matcha-dark-aliz";
+      name = palette.theme.gtk;
       package = pkgs.matcha-gtk-theme;
     };
     iconTheme = {
-      name = "Papirus-Dark";
+      name = palette.theme.icon;
       package = pkgs.papirus-icon-theme;
     };
     cursorTheme = {
-      name = "Bibata-Modern-Ice";
+      name = palette.theme.cursor;
       package = pkgs.bibata-cursors;
     };
     font = {
-      name = "JetBrainsMono Nerd Font";
+      name = palette.font.mono;
       package = pkgs.nerd-fonts.jetbrains-mono;
       size = 12;
     };
@@ -92,73 +93,73 @@ in
     };
     extraCss = ''
       window {
-        background-color: #0d0e11;
-        color: #e6e6ea;
-        font-family: "JetBrainsMono Nerd Font";
+        background-color: ${c.base};
+        color: ${c.text};
+        font-family: "${palette.font.mono}";
       }
 
       frame.background {
         background-color: rgba(19, 20, 24, 0.88);
-        border: 1px solid #27282f;
+        border: 1px solid ${c.border};
         border-radius: 12px;
         padding: 16px;
       }
 
       label {
-        color: #e6e6ea;
+        color: ${c.text};
       }
 
       entry {
-        background-color: #0d0e11;
-        color: #e6e6ea;
-        border: 1px solid #27282f;
+        background-color: ${c.base};
+        color: ${c.text};
+        border: 1px solid ${c.border};
         border-radius: 8px;
         padding: 8px 12px;
-        caret-color: #4c50bc;
+        caret-color: ${c.accent};
       }
 
       entry:focus {
-        border-color: #4c50bc;
-        box-shadow: 0 0 0 1px #4c50bc;
+        border-color: ${c.accent};
+        box-shadow: 0 0 0 1px ${c.accent};
       }
 
       selection {
-        background-color: #4c50bc;
+        background-color: ${c.accent};
         color: #ffffff;
       }
 
       button {
-        background-color: #18191e;
-        color: #e6e6ea;
-        border: 1px solid #27282f;
+        background-color: ${c.surface0};
+        color: ${c.text};
+        border: 1px solid ${c.border};
         border-radius: 8px;
         padding: 6px 14px;
       }
 
       button:hover {
-        background-color: #27282f;
-        border-color: #3a3c48;
+        background-color: ${c.surface1};
+        border-color: ${c.surface2};
       }
 
       button.suggested-action {
-        background-color: #4c50bc;
+        background-color: ${c.accent};
         color: #ffffff;
-        border-color: #4c50bc;
+        border-color: ${c.accent};
       }
 
       button.suggested-action:hover {
-        background-color: #5b5fce;
+        background-color: ${c.accentHover};
       }
 
       button.destructive-action {
-        color: #e05555;
+        color: ${c.red};
       }
 
       popover contents,
       popover > contents {
-        background-color: #131418;
-        color: #e6e6ea;
-        border: 1px solid #27282f;
+        background-color: ${c.mantle};
+        color: ${c.text};
+        border: 1px solid ${c.border};
         border-radius: 10px;
       }
     '';
@@ -166,7 +167,7 @@ in
 
   # World-readable directory so greeter can read the active wallpaper synced by waypaper
   systemd.tmpfiles.rules = [
-    "d /var/lib/wallpaper 0755 ${config.users.users.boredvoidater.name} ${config.users.users.boredvoidater.group} - -"
+    "d /var/lib/wallpaper 0755 ${config.users.users.${meta.username}.name} ${config.users.users.${meta.username}.group} - -"
   ];
 
   # Force-install uBlock Origin Lite and Vimium C across all Chrome/Chromium webapp profiles
@@ -247,8 +248,9 @@ in
   };
 
   environment.systemPackages = with pkgs; [
-
-    file-roller alacritty qt5.qtgraphicaleffects system-config-printer
+    file-roller
+    qt5.qtgraphicaleffects
+    system-config-printer
     (writeShellScriptBin "polkit-gnome-agent" ''
       exec ${polkit_gnome}/libexec/polkit-gnome-authentication-agent-1 "$@"
     '')

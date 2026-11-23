@@ -1,5 +1,8 @@
-{ pkgs, ... }:
+{ palette, ... }:
 
+let
+  c = palette.colors;
+in
 {
   programs.alacritty = {
     enable = true;
@@ -14,56 +17,56 @@
 
       font = {
         normal = {
-          family = "JetBrainsMono Nerd Font";
+          family = palette.font.mono;
           style = "Regular";
         };
         bold = {
-          family = "JetBrainsMono Nerd Font";
+          family = palette.font.mono;
           style = "Bold";
         };
         italic = {
-          family = "JetBrainsMono Nerd Font";
+          family = palette.font.mono;
           style = "Italic";
         };
-        size = 14.0;
+        size = palette.font.size + 0.0;
       };
 
       colors = {
         primary = {
-          background = "#0d0e11";
-          foreground = "#e6e6ea";
+          background = c.base;
+          foreground = c.text;
         };
-        
+
         cursor = {
-          text = "#0d0e11";
-          cursor = "#e6e6ea";
+          text = c.base;
+          cursor = c.text;
         };
 
         selection = {
-          text = "#e6e6ea";
-          background = "#27282f";
+          text = c.text;
+          background = c.surface1;
         };
 
         normal = {
-          black   = "#18191e";
-          red     = "#e05555";
-          green   = "#3bb36a";
-          yellow  = "#d4a34b";
-          blue    = "#3a86ff";
-          magenta = "#a855f7";
-          cyan    = "#2ec4b6";
-          white   = "#e6e6ea";
+          black = c.surface0;
+          red = c.red;
+          green = c.green;
+          yellow = c.yellow;
+          blue = c.blue;
+          magenta = c.mauve;
+          cyan = c.teal;
+          white = c.text;
         };
 
         bright = {
-          black   = "#5a5c66";
-          red     = "#ea6969";
-          green   = "#4cd47d";
-          yellow  = "#e5b75f";
-          blue    = "#5b9bff";
-          magenta = "#bc7cf8";
-          cyan    = "#4de0d3";
-          white   = "#f4f4f6";
+          black = c.overlay0;
+          red = c.brightRed;
+          green = c.brightGreen;
+          yellow = c.brightYellow;
+          blue = c.brightBlue;
+          magenta = c.brightMauve;
+          cyan = c.brightTeal;
+          white = c.white;
         };
       };
     };

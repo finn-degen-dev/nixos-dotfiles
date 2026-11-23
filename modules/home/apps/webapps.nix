@@ -1,12 +1,6 @@
 { pkgs, lib, ... }:
 
 let
-  notionSvg = pkgs.fetchurl {
-    url = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Notion-logo.svg";
-    curlOptsList = [ "-H" "User-Agent: Mozilla/5.0 (X11; Linux x86_64)" ];
-    sha256 = "sha256-G1KhhdgWbZM59cFt1ReJ7jD0mmW01Ac4KQtgQj4zEWA=";
-  };
-
   # Reference google-chrome-stable directly instead of adding pkgs.google-chrome to
   # home.packages so Chrome itself stays hidden from $PATH and application launchers.
   mkChromeWebApp = { execName, url, extraFlags ? [ ] }:
@@ -152,7 +146,6 @@ let
       url = "https://www.notion.so";
       categories = [ "Office" "Utility" "TextEditor" ];
       mimeType = [ "x-scheme-handler/notion" ];
-      iconSvg = notionSvg;
     };
 
     aistudio = {
@@ -172,59 +165,31 @@ let
     };
   };
 
-  mkExtraIconFiles = execName: app:
-    if app ? iconSvg then
-      let
-        png = pkgs.runCommand "${execName}.png" { } ''
-          ${pkgs.resvg}/bin/resvg -w 512 -h 512 ${app.iconSvg} $out
-        '';
-      in
-      {
-        inherit png;
-        dataFiles = {
-          "icons/hicolor/scalable/apps/${execName}.svg".source = app.iconSvg;
-          "icons/hicolor/512x512/apps/${execName}.png".source = png;
+  builtApps = lib.mapAttrs (execName: app: {
+    pkg =
+      if app ? pkg then
+        app.pkg
+      else
+        mkChromeWebApp {
+          inherit execName;
+          url = app.url;
+          extraFlags = app.extraFlags or [ ];
         };
-      }
-    else
-      {
-        png = null;
-        dataFiles = { };
+    desktopEntry = {
+      inherit (app) name genericName comment categories;
+      exec = if (app.mimeType or [ ]) != [ ] then "${execName} %U" else execName;
+      icon = execName;
+      terminal = false;
+      settings = {
+        StartupWMClass = execName;
       };
-
-  builtApps = lib.mapAttrs (execName: app:
-    let
-      iconInfo = mkExtraIconFiles execName app;
-    in
-    {
-      pkg =
-        if app ? pkg then
-          app.pkg
-        else
-          mkChromeWebApp {
-            inherit execName;
-            url = app.url;
-            extraFlags = app.extraFlags or [ ];
-          };
-      desktopEntry = {
-        inherit (app) name genericName comment categories;
-        exec = if (app.mimeType or [ ]) != [ ] then "${execName} %U" else execName;
-        icon = if iconInfo.png != null then "${iconInfo.png}" else execName;
-        terminal = false;
-        settings = {
-          StartupWMClass = execName;
-        };
-      } // lib.optionalAttrs (app ? mimeType) {
-        inherit (app) mimeType;
-      };
-      inherit (iconInfo) dataFiles;
-    }
-  ) webApps;
+    } // lib.optionalAttrs (app ? mimeType) {
+      inherit (app) mimeType;
+    };
+  }) webApps;
 in
 {
   home.packages = map (app: app.pkg) (builtins.attrValues builtApps);
 
   xdg.desktopEntries = lib.mapAttrs (_: app: app.desktopEntry) builtApps;
-
-  xdg.dataFile = lib.foldl' (acc: app: acc // app.dataFiles) { } (builtins.attrValues builtApps);
 }

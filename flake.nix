@@ -23,6 +23,8 @@
   outputs = { self, nixpkgs, home-manager, sops-nix, nix-flatpak, vicinae, ytm-player, ... }:
     let
       system = "x86_64-linux";
+      meta = import ./lib/meta.nix;
+      palette = import ./lib/palette.nix;
 
       customOverlay = final: prev: {
         nchat-patched = prev.nchat.overrideAttrs (old: {
@@ -45,7 +47,7 @@
         });
       };
 
-      pkgs = import nixpkgs {
+      ciPkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
         overlays = [ customOverlay ];
@@ -53,14 +55,15 @@
     in
     {
       packages.${system} = {
-        nchat-patched = pkgs.nchat-patched;
-        concord-tui-fixed = pkgs.concord-tui-fixed;
-        aseprite = pkgs.aseprite;
+        nchat-patched = ciPkgs.nchat-patched;
+        concord-tui-fixed = ciPkgs.concord-tui-fixed;
+        aseprite = ciPkgs.aseprite;
       };
 
       nixosConfigurations = {
-        nixos-btw = nixpkgs.lib.nixosSystem {
+        ${meta.hostname} = nixpkgs.lib.nixosSystem {
           inherit system;
+          specialArgs = { inherit meta palette; };
 
           modules = [
             ./configuration.nix
@@ -75,8 +78,8 @@
               home-manager = {
                 useGlobalPkgs = true;
                 useUserPackages = true;
-                extraSpecialArgs = { inherit pkgs sops-nix vicinae ytm-player; };
-                users.boredvoidater = import ./home.nix;
+                extraSpecialArgs = { inherit sops-nix vicinae ytm-player meta palette; };
+                users.${meta.username} = import ./home.nix;
                 backupFileExtension = "backup";
               };
             }

@@ -1,27 +1,34 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
-  # Background flatpak update service - runs after login instead of blocking boot
   systemd.user.services.flatpak-auto-update = {
-    unitConfig = {
+    Unit = {
       Description = "Auto-update Flatpak applications in background";
-      After = [ "graphical-session.target" ];
-      Wants = [ "graphical-session.target" ];
+      After = [ "network-online.target" "graphical-session.target" ];
+      Wants = [ "network-online.target" ];
     };
-    serviceConfig = {
+    Service = {
       Type = "oneshot";
       ExecStart = "${pkgs.flatpak}/bin/flatpak update --system --noninteractive -y";
-      # Run with lower priority to not impact system responsiveness
       Nice = 19;
       IOSchedulingClass = "best-effort";
       IOSchedulingPriority = 7;
     };
-    # Run 5 minutes after login to let the system settle
-    timerConfig = {
+  };
+
+  systemd.user.timers.flatpak-auto-update = {
+    Unit = {
+      Description = "Schedule background Flatpak updates";
+    };
+    Timer = {
+      Unit = "flatpak-auto-update.service";
       OnBootSec = "5min";
       OnUnitActiveSec = "24h";
       Persistent = true;
       RandomizedDelaySec = "10min";
+    };
+    Install = {
+      WantedBy = [ "timers.target" ];
     };
   };
 }

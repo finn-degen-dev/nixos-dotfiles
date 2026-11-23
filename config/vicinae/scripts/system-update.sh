@@ -16,6 +16,20 @@
 set -e
 export PATH="/run/wrappers/bin:/run/current-system/sw/bin:/etc/profiles/per-user/$USER/bin:$PATH"
 
+FROM_LAUNCHER=0
+if [ "${1:-}" = "--from-launcher" ]; then
+  FROM_LAUNCHER=1
+  shift
+fi
+
+if [ ! -t 0 ] && command -v alacritty >/dev/null 2>&1; then
+  exec alacritty --title "System Update" -e bash "$0" --from-launcher "$@"
+fi
+
+if [ "$FROM_LAUNCHER" -eq 1 ]; then
+  trap 'rc=$?; echo ""; read -rp "Finished (exit $rc). Press [Enter] to close..." _' EXIT
+fi
+
 DOTFILES_DIR="$HOME/nixos-dotfiles"
 cd "$DOTFILES_DIR" || exit 1
 

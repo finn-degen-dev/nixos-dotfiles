@@ -1,100 +1,103 @@
-{ pkgs, ytm-player, ... }:
+{ pkgs, lib, ytm-player, palette, ... }:
 
 let
+  c = palette.colors;
   ytmPkg = ytm-player.packages.${pkgs.stdenv.hostPlatform.system}.ytm-player-full;
 
-  music-runner = pkgs.writeShellScriptBin "music-runner" ''
-    set -u
-    export PATH="/run/current-system/sw/bin:/etc/profiles/per-user/$USER/bin:$PATH"
-    while true; do
-      start_ts=$(date +%s)
-      ${ytmPkg}/bin/ytm
-      status=$?
-      elapsed=$(( $(date +%s) - start_ts ))
-      if [ "$status" -eq 0 ] && [ "$elapsed" -ge 3 ]; then
-        break
-      fi
-      echo ""
-      echo "ytm exited with status $status (if this is your first run, you may need to authenticate)."
-      echo "Press [s] to run 'ytm setup', [Enter] to retry, or close with Super+W..."
-      read -r choice
-      if [ "$choice" = "s" ] || [ "$choice" = "S" ]; then
-        ${ytmPkg}/bin/ytm setup
-      fi
-    done
-  '';
-
-  music-scratchpad = pkgs.writeShellScriptBin "music-scratchpad" ''
-    exec ${pkgs.kitty}/bin/kitty --class music-scratchpad -e ${music-runner}/bin/music-runner
-  '';
-
-  music-toggle = pkgs.writeShellScriptBin "music-toggle" ''
-    set -u
-    export PATH="/run/current-system/sw/bin:/etc/profiles/per-user/$USER/bin:$PATH"
-    if ! hyprctl clients -j 2>/dev/null | ${pkgs.jq}/bin/jq -e '.[] | select(.class == "music-scratchpad")' >/dev/null 2>&1; then
-      ${music-scratchpad}/bin/music-scratchpad >/dev/null 2>&1 &
-      for _ in $(seq 1 40); do
-        if hyprctl clients -j 2>/dev/null | ${pkgs.jq}/bin/jq -e '.[] | select(.class == "music-scratchpad")' >/dev/null 2>&1; then
+  music-runner = pkgs.writeShellApplication {
+    name = "music-runner";
+    runtimeInputs = [ ytmPkg pkgs.coreutils ];
+    bashOptions = [ "nounset" "pipefail" ];
+    text = ''
+      while true; do
+        start_ts=$(date +%s)
+        ytm
+        status=$?
+        elapsed=$(( $(date +%s) - start_ts ))
+        if [ "$status" -eq 0 ] && [ "$elapsed" -ge 3 ]; then
           break
         fi
-        sleep 0.1
+        echo ""
+        echo "ytm exited with status $status (if this is your first run, you may need to authenticate)."
+        echo "Press [s] to run 'ytm setup', [Enter] to retry, or close with Super+W..."
+        read -r choice
+        if [ "$choice" = "s" ] || [ "$choice" = "S" ]; then
+          ytm setup
+        fi
       done
-      if hyprctl monitors -j 2>/dev/null | ${pkgs.jq}/bin/jq -e '.[] | select(.focused == true and .specialWorkspace.name == "special:music")' >/dev/null 2>&1; then
-        exit 0
-      fi
-    fi
-    exec hyprctl dispatch 'hl.dsp.workspace.toggle_special("music")'
-  '';
-in
-{
-
-  programs.imv = {
-    enable = true;
-    settings = {
-      options = {
-
-        background = "0d0e11";
-      };
-    };
+    '';
   };
 
+  music-scratchpad = pkgs.writeShellApplication {
+    name = "music-scratchpad";
+    runtimeInputs = [ pkgs.kitty music-runner ];
+    text = ''
+      exec kitty --class music-scratchpad -e music-runner
+    '';
+  };
+
+  music-toggle = pkgs.writeShellApplication {
+    name = "music-toggle";
+    runtimeInputs = [ pkgs.jq pkgs.coreutils music-scratchpad ];
+    bashOptions = [ "nounset" "pipefail" ];
+    text = ''
+      if ! hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "music-scratchpad")' >/dev/null 2>&1; then
+        music-scratchpad >/dev/null 2>&1 &
+        for _ in $(seq 1 40); do
+          if hyprctl clients -j 2>/dev/null | jq -e '.[] | select(.class == "music-scratchpad")' >/dev/null 2>&1; then
+            break
+          fi
+          sleep 0.1
+        done
+        if hyprctl monitors -j 2>/dev/null | jq -e '.[] | select(.focused == true and .specialWorkspace.name == "special:music")' >/dev/null 2>&1; then
+          exit 0
+        fi
+      fi
+      exec hyprctl dispatch 'hl.dsp.workspace.toggle_special("music")'
+    '';
+  };
+in
+{
+  programs.imv = {
+    enable = true;
+    settings.options.background = lib.removePrefix "#" c.base;
+  };
 
   programs.zathura = {
     enable = true;
     options = {
-
-      default-bg = "#0d0e11";
-      default-fg = "#e6e6ea";
-      statusbar-bg = "#131418";
-      statusbar-fg = "#8c8f9a";
-      inputbar-bg = "#18191e";
-      inputbar-fg = "#e6e6ea";
+      default-bg = c.base;
+      default-fg = c.text;
+      statusbar-bg = c.mantle;
+      statusbar-fg = c.overlay1;
+      inputbar-bg = c.surface0;
+      inputbar-fg = c.text;
     };
   };
 
   xdg.configFile."ytm-player/theme.toml".text = ''
     [colors]
-    background = "#0d0e11"
-    foreground = "#e6e6ea"
-    primary = "#4c50bc"
-    secondary = "#b5b7c0"
-    accent = "#a855f7"
-    success = "#3bb36a"
-    warning = "#d4a34b"
-    error = "#e05555"
-    surface = "#131418"
-    border = "#27282f"
-    muted_text = "#8c8f9a"
-    text = "#e6e6ea"
-    playback_bar_bg = "#131418"
+    background = "${c.base}"
+    foreground = "${c.text}"
+    primary = "${c.accent}"
+    secondary = "${c.subtext0}"
+    accent = "${c.mauve}"
+    success = "${c.green}"
+    warning = "${c.yellow}"
+    error = "${c.red}"
+    surface = "${c.mantle}"
+    border = "${c.border}"
+    muted_text = "${c.overlay1}"
+    text = "${c.text}"
+    playback_bar_bg = "${c.mantle}"
     active_tab = "#ffffff"
-    inactive_tab = "#8c8f9a"
-    selected_item = "#27282f"
-    progress_filled = "#4c50bc"
-    progress_empty = "#27282f"
-    lyrics_played = "#5a5c66"
-    lyrics_current = "#a855f7"
-    lyrics_upcoming = "#e6e6ea"
+    inactive_tab = "${c.overlay1}"
+    selected_item = "${c.surface1}"
+    progress_filled = "${c.accent}"
+    progress_empty = "${c.surface1}"
+    lyrics_played = "${c.overlay0}"
+    lyrics_current = "${c.mauve}"
+    lyrics_upcoming = "${c.text}"
   '';
 
   home.packages = with pkgs; [
@@ -102,14 +105,13 @@ in
     music-runner
     music-scratchpad
     music-toggle
-    xarchiver # GUI archive manager (works perfectly with Thunar)
+    xarchiver
     playerctl
   ];
 
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
-
       "text/html" = [ "librewolf.desktop" ];
       "x-scheme-handler/http" = [ "librewolf.desktop" ];
       "x-scheme-handler/https" = [ "librewolf.desktop" ];
@@ -124,23 +126,19 @@ in
       "image/bmp" = [ "imv.desktop" ];
       "image/svg+xml" = [ "imv.desktop" ];
 
-
       "video/mp4" = [ "mpv.desktop" ];
-      "video/x-matroska" = [ "mpv.desktop" ]; # mkv
+      "video/x-matroska" = [ "mpv.desktop" ];
       "video/webm" = [ "mpv.desktop" ];
-      "video/x-msvideo" = [ "mpv.desktop" ]; # avi
-      "video/quicktime" = [ "mpv.desktop" ]; # mov
+      "video/x-msvideo" = [ "mpv.desktop" ];
+      "video/quicktime" = [ "mpv.desktop" ];
 
-
-      "audio/mpeg" = [ "mpv.desktop" ]; # mp3
+      "audio/mpeg" = [ "mpv.desktop" ];
       "audio/ogg" = [ "mpv.desktop" ];
       "audio/x-wav" = [ "mpv.desktop" ];
       "audio/flac" = [ "mpv.desktop" ];
 
-
       "application/pdf" = [ "org.pwmt.zathura.desktop" ];
       "application/epub+zip" = [ "org.pwmt.zathura.desktop" ];
-
 
       "application/zip" = [ "xarchiver.desktop" ];
       "application/x-tar" = [ "xarchiver.desktop" ];

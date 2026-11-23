@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, palette, ... }:
 let
   dotfiles = config.boredvoidater.dotfilesPath;
 in
@@ -7,8 +7,7 @@ in
     swaybg
     waypaper
     wl-clipboard
-    cbatticon # Battery tray indicator
-    waybar    # Minimal top bar (battery, time, workspace)
+    waybar
   ];
 
   # Seed a writable waypaper config so waypaper can persist selections and sync to ReGreet
@@ -27,7 +26,7 @@ show_path_in_tooltip = True
 backend = swaybg
 fill = fill
 sort = name
-color = #0d0e11
+color = ${palette.colors.base}
 subfolders = True
 all_subfolders = False
 show_hidden = False
