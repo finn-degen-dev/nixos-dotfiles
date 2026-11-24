@@ -37,6 +37,7 @@ in
     zbar
     tesseract
     hyprpicker
+    quickemu
 
     # Productivity, security & transfer
     obsidian
