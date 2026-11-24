@@ -38,6 +38,7 @@
     ./modules/home/apps/webapps.nix
     ./modules/home/apps/comms/default.nix
     ./modules/home/apps/paisa.nix
+    ./modules/home/apps/yt-radar.nix
   ];
 
   home.username = meta.username;

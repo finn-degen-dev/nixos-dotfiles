@@ -29,6 +29,9 @@
             "moe.karaokes.mugen": {
                "alias": "karaoke"
             },
+            "paisa": {
+               "alias": "finance"
+            },
             "ultrastar-karaoke-maker": {
                "alias": "karaoke"
             },
