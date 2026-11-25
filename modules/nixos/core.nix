@@ -2,10 +2,7 @@
 
 {
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelParams = [
-    "nvidia_drm.fbdev=1"
-    "usbcore.autosuspend=-1"
-  ];
+  boot.kernelParams = [ ];
   boot.loader.grub = {
     enable = true;
     efiSupport = true;
@@ -65,8 +62,8 @@
   powerManagement.powertop.enable = true;
 
   services.udev.extraRules = ''
-    # Prevent USB power-saving autosuspend on USB devices
-    ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"
+    # Keep external USB peripherals awake while allowing USB hubs (including the GPU xHCI root hub) to suspend
+    ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{bDeviceClass}!="09", TEST=="power/control", ATTR{power/control}="on"
   '';
 
   environment.systemPackages = with pkgs; [

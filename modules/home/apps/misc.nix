@@ -38,6 +38,8 @@ in
     tesseract
     hyprpicker
     quickemu
+    qemu-utils
+    auto-editor
 
     # Productivity, security & transfer
     obsidian

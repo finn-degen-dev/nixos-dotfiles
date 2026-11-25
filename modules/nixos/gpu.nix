@@ -1,5 +1,15 @@
 { pkgs, config, ... }:
 
+let
+  nvidia-offload = pkgs.writeShellScriptBin "nvidia-offload" ''
+    unset __EGL_VENDOR_LIBRARY_FILENAMES
+    export __NV_PRIME_RENDER_OFFLOAD=1
+    export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+    export __GLX_VENDOR_LIBRARY_NAME=nvidia
+    export __VK_LAYER_NV_optimus=NVIDIA_only
+    exec "$@"
+  '';
+in
 {
 
   hardware.graphics = {
@@ -24,12 +34,28 @@
     prime = {
       offload = {
         enable = true;
-        enableOffloadCmd = true; # Automatically creates the 'nvidia-offload' script
+        enableOffloadCmd = false; # Replaced below to unset __EGL_VENDOR_LIBRARY_FILENAMES for offloaded EGL apps
       };
       
       intelBusId = "PCI:0:2:0";
       nvidiaBusId = "PCI:1:0:0";
     };
+  };
+
+  boot.extraModprobeConfig = ''
+    options nvidia NVreg_EnableGpuFirmware=0
+    options nvidia_drm fbdev=0
+  '';
+
+  services.udev.extraRules = ''
+    ACTION=="add|change", SUBSYSTEM=="drm", KERNEL=="card[0-9]*", DEVPATH=="*/0000:00:02.0/drm/card*", SYMLINK+="dri/intel-igpu"
+    ACTION=="add|bind|change", SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", TEST=="power/control", ATTR{power/control}="auto"
+  '';
+
+  environment.sessionVariables = {
+    # Comment out AQ_DRM_DEVICES if using an external display port wired directly to the dGPU
+    AQ_DRM_DEVICES = "/dev/dri/intel-igpu";
+    __EGL_VENDOR_LIBRARY_FILENAMES = "/run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json";
   };
 
   programs.steam = {
@@ -48,6 +74,7 @@
   };
 
   environment.systemPackages = with pkgs; [
+    nvidia-offload
     steam-run
     cudatoolkit
   ];
