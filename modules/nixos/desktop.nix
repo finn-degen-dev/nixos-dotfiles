@@ -50,6 +50,27 @@ let
       fi
     fi
   '';
+
+  chromePolicy = builtins.toJSON {
+    ExtensionInstallForcelist = [
+      "ddkjiahejlhfcafbddmgiahcphecmpfh;https://clients2.google.com/service/update2/crx" # uBlock Origin Lite
+      "hfjbmagddngcpeloejdejnfgbamkjaeg;https://clients2.google.com/service/update2/crx" # Vimium C
+    ];
+    URLBlocklist = [
+      "youtube.com"
+      "youtu.be"
+      "reddit.com"
+      "redd.it"
+      "instagram.com"
+      "tiktok.com"
+      "x.com"
+      "twitter.com"
+      "twitch.tv"
+    ];
+    IncognitoModeAvailability = 1;
+    BrowserGuestModeEnabled = false;
+    BrowserAddPersonEnabled = false;
+  };
 in
 {
   services.xserver = {
@@ -171,20 +192,9 @@ in
     "z /sys/devices/system/cpu/intel_pstate/no_turbo 0664 root wheel - -"
   ];
 
-  # Force-install uBlock Origin Lite and Vimium C across all Chrome/Chromium webapp profiles
-  environment.etc."opt/chrome/policies/managed/extensions.json".text = builtins.toJSON {
-    ExtensionInstallForcelist = [
-      "ddkjiahejlhfcafbddmgiahcphecmpfh;https://clients2.google.com/service/update2/crx"
-      "hfjbmagddngcpeloejdejnfgbamkjaeg;https://clients2.google.com/service/update2/crx"
-    ];
-  };
-
-  environment.etc."chromium/policies/managed/extensions.json".text = builtins.toJSON {
-    ExtensionInstallForcelist = [
-      "ddkjiahejlhfcafbddmgiahcphecmpfh;https://clients2.google.com/service/update2/crx"
-      "hfjbmagddngcpeloejdejnfgbamkjaeg;https://clients2.google.com/service/update2/crx"
-    ];
-  };
+  # Enforce webapp extensions and block distracting sites/profiles across all Chrome/Chromium webapp profiles
+  environment.etc."opt/chrome/policies/managed/policies.json".text = chromePolicy;
+  environment.etc."chromium/policies/managed/policies.json".text = chromePolicy;
 
   programs.hyprland.enable = true;
 
