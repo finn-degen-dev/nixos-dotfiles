@@ -7,6 +7,7 @@ let
     export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
     export __GLX_VENDOR_LIBRARY_NAME=nvidia
     export __VK_LAYER_NV_optimus=NVIDIA_only
+    export VK_LOADER_DRIVERS_SELECT='*nvidia*'
     exec "$@"
   '';
 in
@@ -57,6 +58,7 @@ in
     # Comment out AQ_DRM_DEVICES if using an external display port wired directly to the dGPU
     AQ_DRM_DEVICES = "/dev/dri/intel-igpu";
     __EGL_VENDOR_LIBRARY_FILENAMES = "/run/opengl-driver/share/glvnd/egl_vendor.d/50_mesa.json";
+    VK_LOADER_DRIVERS_SELECT = "*intel*";
   };
 
   programs.steam = {

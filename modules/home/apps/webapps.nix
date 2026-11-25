@@ -3,10 +3,23 @@
 let
   # Reference google-chrome-stable directly instead of adding pkgs.google-chrome to
   # home.packages so Chrome itself stays hidden from $PATH and application launchers.
-  mkChromeWebApp = { execName, url, extraFlags ? [ ] }:
+  mkChromeWebApp = { execName, url, extraFlags ? [ ], nvidiaOffload ? false }:
+    let
+      # Chrome under native Wayland falls back to the Intel iGPU on Optimus; XWayland enables GLX PRIME offload
+      ozoneFlag = if nvidiaOffload then "--ozone-platform=x11" else "--ozone-platform-hint=auto";
+    in
     pkgs.writeShellScriptBin execName ''
       DATA_DIR="$HOME/.local/share/webapps/${execName}"
       mkdir -p "$DATA_DIR"
+      ${lib.optionalString nvidiaOffload ''
+        unset __EGL_VENDOR_LIBRARY_FILENAMES
+        export __NV_PRIME_RENDER_OFFLOAD=1
+        export __NV_PRIME_RENDER_OFFLOAD_PROVIDER=NVIDIA-G0
+        export __GLX_VENDOR_LIBRARY_NAME=nvidia
+        export __VK_LAYER_NV_optimus=NVIDIA_only
+        export VK_LOADER_DRIVERS_SELECT='*nvidia*'
+        export LD_LIBRARY_PATH="/run/opengl-driver/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      ''}
       TARGET_URL="${url}"
       for arg in "$@"; do
         case "$arg" in
@@ -29,7 +42,7 @@ let
         --app="$TARGET_URL" \
         --user-data-dir="$DATA_DIR" \
         --class="${execName}" \
-        --ozone-platform-hint=auto \
+        ${ozoneFlag} \
         --no-first-run \
         --no-default-browser-check \
         ${lib.escapeShellArgs extraFlags}
@@ -133,6 +146,7 @@ let
       comment = "Onshape 3D CAD web app";
       url = "https://cad.onshape.com";
       categories = [ "Graphics" "Engineering" "3DGraphics" ];
+      nvidiaOffload = true;
       extraFlags = [
         "--enable-webgl"
         "--ignore-gpu-blocklist"
@@ -174,6 +188,7 @@ let
           inherit execName;
           url = app.url;
           extraFlags = app.extraFlags or [ ];
+          nvidiaOffload = app.nvidiaOffload or false;
         };
     desktopEntry = {
       inherit (app) name genericName comment categories;

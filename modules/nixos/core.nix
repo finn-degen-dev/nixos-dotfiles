@@ -59,11 +59,20 @@
   services.upower.enable = true;
   services.power-profiles-daemon.enable = true;
   services.thermald.enable = true;
-  powerManagement.powertop.enable = true;
+  powerManagement.powertop = {
+    enable = true;
+    # Re-apply USB power/control rules after powertop --auto-tune overrides them at boot
+    postStart = ''
+      ${lib.getExe' config.systemd.package "udevadm"} trigger -c change -s usb
+    '';
+  };
 
   services.udev.extraRules = ''
-    # Keep external USB peripherals awake while allowing USB hubs (including the GPU xHCI root hub) to suspend
-    ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{bDeviceClass}!="09", TEST=="power/control", ATTR{power/control}="on"
+    # Allow USB controllers/hubs attached to the NVIDIA GPU (0x10de) to suspend so the dGPU can reach D3cold
+    ACTION=="add|bind|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", SUBSYSTEMS=="pci", ATTRS{vendor}=="0x10de", TEST=="power/control", ATTR{power/control}="auto", GOTO="usb_pm_end"
+    # Keep all other USB peripherals and internal/external hubs awake
+    ACTION=="add|bind|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", TEST=="power/control", ATTR{power/control}="on"
+    LABEL="usb_pm_end"
   '';
 
   environment.systemPackages = with pkgs; [
