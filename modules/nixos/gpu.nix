@@ -18,6 +18,7 @@ in
     extraPackages = with pkgs; [
       ocl-icd
       intel-compute-runtime # Fixes DaVinci Resolve aborting on the iGPU
+      intel-media-driver    # Intel VA-API hardware video decode
     ];
   };
 

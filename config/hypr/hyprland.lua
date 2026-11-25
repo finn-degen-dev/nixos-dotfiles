@@ -107,6 +107,7 @@ hl.on("hyprland.start", function()
 	hl.exec_cmd("polkit-gnome-agent")
 	hl.exec_cmd("vicinae server")
 	hl.exec_cmd("waybar")
+	hl.exec_cmd("hypridle")
 	hl.exec_cmd("comms-scratchpad")
 end)
 

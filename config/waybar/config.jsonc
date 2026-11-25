@@ -20,29 +20,26 @@
   },
 
   "custom/bluetooth": {
-    "exec": "python3 ~/.config/waybar/scripts/devices.py --bluetooth",
+    "exec": "exec python3 ~/.config/waybar/scripts/devices.py --watch-bluetooth",
     "return-type": "json",
-    "interval": 5,
-    "signal": 9,
+    "restart-interval": 5,
     "on-click": "python3 ~/.config/waybar/scripts/devices.py --bt-menu",
     "on-click-right": "python3 ~/.config/waybar/scripts/devices.py --bt-toggle",
     "tooltip": true
   },
 
   "custom/usb": {
-    "exec": "python3 ~/.config/waybar/scripts/devices.py --usb",
+    "exec": "exec python3 ~/.config/waybar/scripts/devices.py --watch-usb",
     "return-type": "json",
-    "interval": 3,
-    "signal": 10,
+    "restart-interval": 5,
     "on-click": "python3 ~/.config/waybar/scripts/devices.py --usb-menu",
     "tooltip": true
   },
 
   "custom/power": {
-    "exec": "bash ~/.config/vicinae/scripts/power-mode.sh --status",
+    "exec": "exec bash ~/.config/vicinae/scripts/power-mode.sh --watch-status",
     "return-type": "json",
-    "interval": 5,
-    "signal": 8,
+    "restart-interval": 5,
     "on-click": "bash ~/.config/vicinae/scripts/power-mode.sh --toggle",
     "on-click-right": "bash ~/.config/vicinae/scripts/power-mode.sh",
     "tooltip": true

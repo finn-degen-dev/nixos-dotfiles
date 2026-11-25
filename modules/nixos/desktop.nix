@@ -168,6 +168,7 @@ in
   # World-readable directory so greeter can read the active wallpaper synced by waypaper
   systemd.tmpfiles.rules = [
     "d /var/lib/wallpaper 0755 ${config.users.users.${meta.username}.name} ${config.users.users.${meta.username}.group} - -"
+    "z /sys/devices/system/cpu/intel_pstate/no_turbo 0664 root wheel - -"
   ];
 
   # Force-install uBlock Origin Lite and Vimium C across all Chrome/Chromium webapp profiles

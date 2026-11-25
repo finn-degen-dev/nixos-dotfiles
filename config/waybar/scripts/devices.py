@@ -3,6 +3,8 @@ import html
 import json
 import os
 import re
+import select
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -738,35 +740,52 @@ def set_bluetooth_power(turn_on: bool) -> tuple[bool, str]:
     return True, "Powered Off"
 
 
-def output_bluetooth() -> None:
+def is_power_saver() -> bool:
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+    mode = read_text(Path(runtime_dir) / "power-mode" / "effective_mode")
+    if mode:
+        return mode == "power-saver"
+    epp = read_text(Path("/sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference"))
+    return epp == "power"
+
+
+def signal_waybar_watch(pid_name: str) -> None:
+    runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp")
+    pid_file = runtime_dir / "waybar-watches" / f"{pid_name}.pid"
+    pid_str = read_text(pid_file)
+    if pid_str.isdigit():
+        try:
+            os.kill(int(pid_str), signal.SIGUSR1)
+            return
+        except OSError:
+            pass
+    sig_num = "RTMIN+9" if pid_name == "bt" else "RTMIN+10"
+    subprocess.run(["pkill", f"-{sig_num}", "waybar"], capture_output=True, timeout=2, check=False)
+
+
+def build_bluetooth_payload() -> str:
     sys_bats = get_sysfs_batteries()
     up_bats = get_upower_batteries()
     powered, devices = get_bluetooth_state()
     enrich_bt_batteries(devices, sys_bats, up_bats)
 
     if not powered:
-        print(
-            json.dumps(
-                {
-                    "text": ICON_BT_OFF,
-                    "class": "off",
-                    "tooltip": "Bluetooth: Off\nClick: Menu • Right-click: Power On",
-                }
-            )
+        return json.dumps(
+            {
+                "text": ICON_BT_OFF,
+                "class": "off",
+                "tooltip": "Bluetooth: Off\nClick: Menu • Right-click: Power On",
+            }
         )
-        return
 
     if not devices:
-        print(
-            json.dumps(
-                {
-                    "text": ICON_BT_ON,
-                    "class": "idle",
-                    "tooltip": "Bluetooth: On (No devices connected)\nClick: Menu • Right-click: Power Off",
-                }
-            )
+        return json.dumps(
+            {
+                "text": ICON_BT_ON,
+                "class": "idle",
+                "tooltip": "Bluetooth: On (No devices connected)\nClick: Menu • Right-click: Power Off",
+            }
         )
-        return
 
     text = "  ".join(format_device_bar(d["icon"], d["bat"]) for d in devices)
     lines = ["Bluetooth: Connected"]
@@ -774,34 +793,29 @@ def output_bluetooth() -> None:
         lines.append(f"{d['icon']} {html.escape(d['name'], quote=False)}{format_bat_tooltip(d['bat'])}")
     lines.append("Click: Menu • Right-click: Power Off")
 
-    print(
-        json.dumps(
-            {
-                "text": text,
-                "class": "connected",
-                "tooltip": "\n".join(lines),
-            }
-        )
+    return json.dumps(
+        {
+            "text": text,
+            "class": "connected",
+            "tooltip": "\n".join(lines),
+        }
     )
 
 
-def output_usb() -> None:
+def build_usb_payload() -> str:
     sys_bats = get_sysfs_batteries()
     up_bats = get_upower_batteries()
     devices = get_usb_devices(sys_bats, up_bats)
     devices.extend(get_sd_card_devices(devices))
 
     if not devices:
-        print(
-            json.dumps(
-                {
-                    "text": "",
-                    "class": "empty",
-                    "tooltip": "No external USB or SD devices connected",
-                }
-            )
+        return json.dumps(
+            {
+                "text": "",
+                "class": "empty",
+                "tooltip": "No external USB or SD devices connected",
+            }
         )
-        return
 
     text = "  ".join(format_device_bar(d["icon"], d["bat"]) for d in devices)
     lines = [f"External Devices ({len(devices)})"]
@@ -809,15 +823,75 @@ def output_usb() -> None:
         lines.append(f"{d['icon']} {html.escape(d['name'], quote=False)}{format_bat_tooltip(d['bat'])}")
     lines.append("Click: Inspect / Open / Eject")
 
-    print(
-        json.dumps(
-            {
-                "text": text,
-                "class": "connected",
-                "tooltip": "\n".join(lines),
-            }
-        )
+    return json.dumps(
+        {
+            "text": text,
+            "class": "connected",
+            "tooltip": "\n".join(lines),
+        }
     )
+
+
+def output_bluetooth() -> None:
+    print(build_bluetooth_payload())
+
+
+def output_usb() -> None:
+    print(build_usb_payload())
+
+
+def watch_loop(builder, pid_name: str, normal_interval: float, saver_interval: float = 60.0) -> None:
+    runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp")
+    watch_dir = runtime_dir / "waybar-watches"
+    watch_dir.mkdir(parents=True, exist_ok=True)
+    pid_file = watch_dir / f"{pid_name}.pid"
+    pid_file.write_text(str(os.getpid()), encoding="utf-8")
+
+    r_fd, w_fd = os.pipe()
+    os.set_blocking(r_fd, False)
+    os.set_blocking(w_fd, False)
+    signal.set_wakeup_fd(w_fd, warn_on_full_buffer=False)
+    signal.signal(signal.SIGUSR1, lambda _sig, _frame: None)
+
+    running = True
+
+    def stop_handler(_sig, _frame) -> None:
+        nonlocal running
+        running = False
+
+    signal.signal(signal.SIGTERM, stop_handler)
+    signal.signal(signal.SIGINT, stop_handler)
+
+    last_payload: str | None = None
+    try:
+        while running:
+            payload = builder()
+            if payload != last_payload:
+                print(payload, flush=True)
+                last_payload = payload
+
+            interval = saver_interval if is_power_saver() else normal_interval
+            try:
+                rlist, _, _ = select.select([r_fd], [], [], interval)
+            except InterruptedError:
+                rlist = []
+            if rlist:
+                try:
+                    os.read(r_fd, 4096)
+                except BlockingIOError:
+                    pass
+    finally:
+        signal.set_wakeup_fd(-1)
+        for fd in (r_fd, w_fd):
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            if pid_file.exists() and pid_file.read_text(encoding="utf-8").strip() == str(os.getpid()):
+                pid_file.unlink()
+        except OSError:
+            pass
 
 
 def toggle_bluetooth() -> None:
@@ -837,7 +911,7 @@ def toggle_bluetooth() -> None:
         timeout=2,
         check=False,
     )
-    subprocess.run(["pkill", "-RTMIN+9", "waybar"], capture_output=True, timeout=2, check=False)
+    signal_waybar_watch("bt")
 
 
 def bt_menu() -> None:
@@ -921,7 +995,7 @@ def bt_menu() -> None:
             subprocess.run(["alacritty", "-e", "bluetui"], check=False)
         break
 
-    subprocess.run(["pkill", "-RTMIN+9", "waybar"], capture_output=True, timeout=2, check=False)
+    signal_waybar_watch("bt")
 
 
 def usb_menu() -> None:
@@ -995,7 +1069,7 @@ def usb_menu() -> None:
                         ["notify-send", "-i", "drive-removable-media-usb", "Safely Ejected", f"Safe to remove {d['name']}"],
                         check=False,
                     )
-                    subprocess.run(["pkill", "-RTMIN+10", "waybar"], check=False)
+                    signal_waybar_watch("usb")
                 else:
                     subprocess.run(
                         ["notify-send", "-u", "critical", "Eject Failed", failed_err],
@@ -1042,6 +1116,10 @@ def main() -> None:
         output_bluetooth()
     elif arg == "--usb":
         output_usb()
+    elif arg == "--watch-bluetooth":
+        watch_loop(build_bluetooth_payload, "bt", normal_interval=5.0, saver_interval=60.0)
+    elif arg == "--watch-usb":
+        watch_loop(build_usb_payload, "usb", normal_interval=3.0, saver_interval=60.0)
     elif arg == "--bt-toggle":
         toggle_bluetooth()
     elif arg == "--bt-menu":

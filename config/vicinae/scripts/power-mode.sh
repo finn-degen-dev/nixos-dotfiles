@@ -16,6 +16,8 @@
 export PATH="/run/current-system/sw/bin:/etc/profiles/per-user/$USER/bin:$PATH"
 
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/power-mode"
+WATCH_DIR="${XDG_RUNTIME_DIR:-/tmp}/waybar-watches"
+NO_TURBO_FILE="/sys/devices/system/cpu/intel_pstate/no_turbo"
 mkdir -p "$STATE_DIR"
 
 get_profile() {
@@ -60,6 +62,109 @@ get_bat_info() {
     return 0
   done
   printf '|\n'
+}
+
+get_kbd_backlight_dev() {
+  command -v brightnessctl >/dev/null 2>&1 || return 0
+  brightnessctl -l -c leds 2>/dev/null | awk -F"'" '/kbd_backlight/{print $2; exit}'
+}
+
+signal_pid_file() {
+  local pid_file="$1"
+  local pid
+  [ -r "$pid_file" ] || return 0
+  pid=$(cat "$pid_file" 2>/dev/null || true)
+  if [ -n "$pid" ] && [ "$pid" != "$$" ]; then
+    kill -USR1 "$pid" 2>/dev/null || true
+  fi
+}
+
+notify_watchers() {
+  signal_pid_file "$WATCH_DIR/power.pid"
+  signal_pid_file "$WATCH_DIR/bt.pid"
+  signal_pid_file "$WATCH_DIR/usb.pid"
+  pkill -RTMIN+8 waybar 2>/dev/null || true
+}
+
+enter_power_saver_extras() {
+  local prev_mode="$1"
+  local cur_bright kbd_dev cur_kbd cur_turbo
+
+  if [ "$prev_mode" != "power-saver" ] && command -v brightnessctl >/dev/null 2>&1; then
+    cur_bright=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4}' | tr -d '%')
+    if [ -n "$cur_bright" ] && [ "$cur_bright" -gt 35 ]; then
+      echo "$cur_bright" > "$STATE_DIR/prev_brightness"
+      brightnessctl -q set 35% 2>/dev/null || true
+    fi
+  fi
+
+  if [ "$prev_mode" != "power-saver" ]; then
+    kbd_dev=$(get_kbd_backlight_dev)
+    if [ -n "$kbd_dev" ]; then
+      cur_kbd=$(brightnessctl -d "$kbd_dev" g 2>/dev/null || true)
+      if [ -n "$cur_kbd" ] && [ "$cur_kbd" -gt 0 ] 2>/dev/null; then
+        echo "$cur_kbd" > "$STATE_DIR/prev_kbd_brightness"
+        brightnessctl -q -d "$kbd_dev" set 0 2>/dev/null || true
+      fi
+    fi
+
+    if [ -w "$NO_TURBO_FILE" ]; then
+      cur_turbo=$(cat "$NO_TURBO_FILE" 2>/dev/null || echo 0)
+      echo "$cur_turbo" > "$STATE_DIR/prev_no_turbo"
+      printf "1" > "$NO_TURBO_FILE" 2>/dev/null || true
+    fi
+
+    if command -v bluetoothctl >/dev/null 2>&1; then
+      if bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+        if [ -z "$(bluetoothctl devices Connected 2>/dev/null)" ]; then
+          echo "1" > "$STATE_DIR/prev_bt_powered"
+          bluetoothctl power off >/dev/null 2>&1 || true
+        fi
+      fi
+    fi
+  fi
+}
+
+leave_power_saver_extras() {
+  local prev_mode="$1"
+  local prev_bright kbd_dev prev_kbd prev_turbo
+
+  if [ "$prev_mode" = "power-saver" ] && [ -f "$STATE_DIR/prev_brightness" ] && command -v brightnessctl >/dev/null 2>&1; then
+    prev_bright=$(cat "$STATE_DIR/prev_brightness")
+    rm -f "$STATE_DIR/prev_brightness"
+    if [ -n "$prev_bright" ]; then
+      brightnessctl -q set "${prev_bright}%" 2>/dev/null || true
+    fi
+  fi
+
+  if [ -f "$STATE_DIR/prev_kbd_brightness" ]; then
+    prev_kbd=$(cat "$STATE_DIR/prev_kbd_brightness" 2>/dev/null || true)
+    rm -f "$STATE_DIR/prev_kbd_brightness"
+    kbd_dev=$(get_kbd_backlight_dev)
+    if [ -n "$kbd_dev" ] && [ -n "$prev_kbd" ]; then
+      brightnessctl -q -d "$kbd_dev" set "$prev_kbd" 2>/dev/null || true
+    fi
+  fi
+
+  if [ -w "$NO_TURBO_FILE" ]; then
+    if [ -f "$STATE_DIR/prev_no_turbo" ]; then
+      prev_turbo=$(cat "$STATE_DIR/prev_no_turbo" 2>/dev/null || echo 0)
+      rm -f "$STATE_DIR/prev_no_turbo"
+      printf "%s" "$prev_turbo" > "$NO_TURBO_FILE" 2>/dev/null || true
+    elif [ "$prev_mode" = "power-saver" ]; then
+      printf "0" > "$NO_TURBO_FILE" 2>/dev/null || true
+    fi
+  fi
+
+  if [ -f "$STATE_DIR/prev_bt_powered" ]; then
+    rm -f "$STATE_DIR/prev_bt_powered"
+    if command -v rfkill >/dev/null 2>&1; then
+      rfkill unblock bluetooth >/dev/null 2>&1 || true
+    fi
+    if command -v bluetoothctl >/dev/null 2>&1; then
+      bluetoothctl power on >/dev/null 2>&1 || true
+    fi
+  fi
 }
 
 set_charge_bypass() {
@@ -175,6 +280,7 @@ apply_mode() {
   if [ "$target" = "wall-plugged" ]; then
     rm -f "$STATE_DIR/manual_override"
     echo "wall-plugged" > "$STATE_DIR/mode"
+    echo "wall-plugged" > "$STATE_DIR/effective_mode"
     if command -v powerprofilesctl >/dev/null 2>&1; then
       powerprofilesctl set balanced 2>/dev/null || true
     fi
@@ -183,22 +289,15 @@ apply_mode() {
       hyprctl eval 'hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })' >/dev/null 2>&1
     fi
     set_internal_refresh "preferred"
-
-    if [ "$current" = "power-saver" ] && [ -f "$STATE_DIR/prev_brightness" ] && command -v brightnessctl >/dev/null 2>&1; then
-      local prev_bright
-      prev_bright=$(cat "$STATE_DIR/prev_brightness")
-      rm -f "$STATE_DIR/prev_brightness"
-      if [ -n "$prev_bright" ]; then
-        brightnessctl -q set "${prev_bright}%" 2>/dev/null || true
-      fi
-    fi
+    leave_power_saver_extras "$current"
 
     notify-send -i ac-adapter "Power Mode" "Wall-Plugged active (AC power, battery charging paused where supported)"
-    pkill -RTMIN+8 waybar 2>/dev/null || true
+    notify_watchers
     return 0
   fi
 
   rm -f "$STATE_DIR/mode"
+  echo "$target" > "$STATE_DIR/effective_mode"
   if is_ac_online; then
     local bat_info cap
     bat_info=$(get_bat_info)
@@ -220,17 +319,9 @@ apply_mode() {
         hyprctl eval 'hl.config({ decoration = { blur = { enabled = false }, shadow = { enabled = false } }, animations = { enabled = false } })' >/dev/null 2>&1
       fi
       set_internal_refresh "60"
+      enter_power_saver_extras "$current"
 
-      if [ "$current" != "power-saver" ] && command -v brightnessctl >/dev/null 2>&1; then
-        local cur_bright
-        cur_bright=$(brightnessctl -m 2>/dev/null | awk -F, '{print $4}' | tr -d '%')
-        if [ -n "$cur_bright" ] && [ "$cur_bright" -gt 35 ]; then
-          echo "$cur_bright" > "$STATE_DIR/prev_brightness"
-          brightnessctl -q set 35% 2>/dev/null || true
-        fi
-      fi
-
-      notify-send -i battery-low "Power Saving Mode" "Enabled (power-saver, 60Hz, effects off)"
+      notify-send -i battery-low "Power Saving Mode" "Enabled (power-saver, 60Hz, effects off, no turbo)"
       ;;
 
     balanced|performance)
@@ -238,15 +329,7 @@ apply_mode() {
         hyprctl eval 'hl.config({ decoration = { blur = { enabled = true }, shadow = { enabled = true } }, animations = { enabled = true } })' >/dev/null 2>&1
       fi
       set_internal_refresh "preferred"
-
-      if [ "$current" = "power-saver" ] && [ -f "$STATE_DIR/prev_brightness" ] && command -v brightnessctl >/dev/null 2>&1; then
-        local prev_bright
-        prev_bright=$(cat "$STATE_DIR/prev_brightness")
-        rm -f "$STATE_DIR/prev_brightness"
-        if [ -n "$prev_bright" ]; then
-          brightnessctl -q set "${prev_bright}%" 2>/dev/null || true
-        fi
-      fi
+      leave_power_saver_extras "$current"
 
       if [ "$target" = "performance" ]; then
         notify-send -i battery-full-charged "Power Mode" "Performance enabled"
@@ -256,7 +339,7 @@ apply_mode() {
       ;;
   esac
 
-  pkill -RTMIN+8 waybar 2>/dev/null || true
+  notify_watchers
 }
 
 check_auto_wall_plugged() {
@@ -295,6 +378,7 @@ print_status_json() {
   check_auto_wall_plugged
   local mode
   mode=$(get_effective_mode)
+  printf '%s\n' "$mode" > "$STATE_DIR/effective_mode"
   case "$mode" in
     wall-plugged)
       printf '{"text":"󰚥","class":"wall-plugged","tooltip":"Power Mode: Wall-Plugged (AC Power / Battery Protected)"}\n'
@@ -311,9 +395,42 @@ print_status_json() {
   esac
 }
 
+watch_status() {
+  mkdir -p "$WATCH_DIR"
+  local pid_file="$WATCH_DIR/power.pid"
+  printf '%s\n' "$$" > "$pid_file"
+
+  local wake_pid=""
+  trap 'if [ -n "$wake_pid" ]; then kill "$wake_pid" 2>/dev/null || true; fi' USR1
+  trap 'if [ -n "$wake_pid" ]; then kill "$wake_pid" 2>/dev/null || true; fi; [ "$(cat "$pid_file" 2>/dev/null || true)" = "$$" ] && rm -f "$pid_file"; exit 0' INT TERM
+
+  local last_json="" cur_json mode delay
+  while true; do
+    cur_json=$(print_status_json)
+    if [ "$cur_json" != "$last_json" ]; then
+      printf '%s\n' "$cur_json"
+      last_json="$cur_json"
+    fi
+    mode=$(get_effective_mode)
+    if [ "$mode" = "power-saver" ]; then
+      delay=60
+    else
+      delay=5
+    fi
+    sleep "$delay" &
+    wake_pid=$!
+    wait "$wake_pid" 2>/dev/null || true
+    wake_pid=""
+  done
+}
+
 case "${1:-}" in
   --status)
     print_status_json
+    exit 0
+    ;;
+  --watch-status)
+    watch_status
     exit 0
     ;;
   --toggle)
@@ -332,7 +449,7 @@ esac
 
 CURRENT=$(get_effective_mode)
 OPT_WALL="󰚥  Wall-Plugged (AC power, pause battery charging)"
-OPT_SAVER="󰌪  Power Saver (60Hz, no blur/animations, low power)"
+OPT_SAVER="󰌪  Power Saver (60Hz, no blur/animations/turbo)"
 OPT_BALANCED="󰗑  Balanced (Default)"
 OPT_PERF="󱐋  Performance (Max power)"
 

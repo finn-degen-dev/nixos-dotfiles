@@ -1,6 +1,21 @@
 { config, pkgs, lib, palette, ... }:
 let
   dotfiles = config.boredvoidater.dotfilesPath;
+
+  hypridle-battery-suspend = pkgs.writeShellScriptBin "hypridle-battery-suspend" ''
+    for ps_dir in /sys/class/power_supply/*; do
+      [ -d "$ps_dir" ] || continue
+      [ -r "$ps_dir/online" ] || continue
+      ps_type=$(cat "$ps_dir/type" 2>/dev/null || true)
+      if [ "$ps_type" = "Mains" ] || [ -z "$ps_type" ]; then
+        online=$(cat "$ps_dir/online" 2>/dev/null || echo 0)
+        if [ "$online" = "1" ]; then
+          exit 0
+        fi
+      fi
+    done
+    exec systemctl suspend
+  '';
 in
 {
   home.packages = with pkgs; [
@@ -8,6 +23,8 @@ in
     waypaper
     wl-clipboard
     waybar
+    hypridle
+    hypridle-battery-suspend
   ];
 
   # Seed a writable waypaper config so waypaper can persist selections and sync to ReGreet
