@@ -19,7 +19,6 @@
   # iCloud Drive integration via rclone (main password + 2FA)
   services.icloud-drive = {
     enable = true;
-    appleId = meta.appleId;
     mountPoint = "/mnt/icloud-drive";
     readOnly = true;
     mountUser = meta.username;

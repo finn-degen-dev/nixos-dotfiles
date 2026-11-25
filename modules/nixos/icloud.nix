@@ -6,11 +6,6 @@ in
 {
   options.services.icloud-drive = {
     enable = lib.mkEnableOption "iCloud Drive integration via rclone (uses main password + 2FA)";
-    appleId = lib.mkOption {
-      type = lib.types.str;
-      description = "Apple ID email";
-      default = "";
-    };
     mountPoint = lib.mkOption {
       type = lib.types.path;
       default = "/mnt/icloud-drive";

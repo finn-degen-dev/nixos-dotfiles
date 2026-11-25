@@ -1,4 +1,4 @@
-{ config, lib, pkgs, meta, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   nchat-record = pkgs.writeShellApplication {
@@ -29,11 +29,13 @@ let
   concord-tui-fixed = pkgs.concord-tui-fixed;
 
   syncAercAccounts = pkgs.writeShellScript "sync-aerc-accounts" ''
-    SECRET_PATH="${config.sops.secrets."gmail_app_password".path}"
+    PW_PATH="${config.sops.secrets."gmail_app_password".path}"
+    ADDR_PATH="${config.sops.secrets."gmail_address".path}"
+    NAME_PATH="${config.sops.secrets."gmail_name".path}"
     CONF_PATH="$HOME/.config/aerc/accounts.conf"
-    if [ -s "$SECRET_PATH" ]; then
+    if [ -s "$PW_PATH" ] && [ -s "$ADDR_PATH" ] && [ -s "$NAME_PATH" ]; then
       ${pkgs.python3}/bin/python3 ${./gen-aerc-accounts.py} \
-        "$SECRET_PATH" "$CONF_PATH" ${lib.escapeShellArg meta.gmailAddress} ${lib.escapeShellArg meta.gmailName}
+        "$PW_PATH" "$CONF_PATH" "$ADDR_PATH" "$NAME_PATH"
     fi
   '';
 
@@ -96,9 +98,9 @@ let
         clear
         echo "=== Gmail (aerc) ==="
         echo "Status: IDLE (0% CPU / 0% network)"
-        if [ ! -s "${config.sops.secrets."gmail_app_password".path}" ]; then
-          echo "Warning: SOPS secret 'gmail_app_password' not found."
-          echo "Run 'sops-edit' to add gmail_app_password, then rebuild with 'nrs'."
+        if [ ! -s "${config.sops.secrets."gmail_app_password".path}" ] || [ ! -s "${config.sops.secrets."gmail_address".path}" ] || [ ! -s "${config.sops.secrets."gmail_name".path}" ]; then
+          echo "Warning: One or more SOPS secrets ('gmail_app_password', 'gmail_address', 'gmail_name') not found."
+          echo "Run 'sops-edit' to add them, then rebuild with 'nrs'."
         fi
         echo "Press [Enter] to open aerc (press 'q' in aerc to return to idle)..."
         read -r _
@@ -173,6 +175,14 @@ in
 
   sops.secrets."gmail_app_password" = {
     path = "${config.home.homeDirectory}/.config/aerc/.gmail-app-password";
+  };
+
+  sops.secrets."gmail_address" = {
+    path = "${config.home.homeDirectory}/.config/aerc/.gmail-address";
+  };
+
+  sops.secrets."gmail_name" = {
+    path = "${config.home.homeDirectory}/.config/aerc/.gmail-name";
   };
 
   # aerc refuses to read accounts.conf if permissions are looser than 0600,

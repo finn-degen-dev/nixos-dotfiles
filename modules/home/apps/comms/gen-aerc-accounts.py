@@ -5,11 +5,17 @@ import urllib.parse
 
 secret_path = sys.argv[1]
 conf_path = sys.argv[2]
-email = sys.argv[3]
-display_name = sys.argv[4]
+addr_path = sys.argv[3]
+name_path = sys.argv[4]
 
 with open(secret_path, "r", encoding="utf-8") as f:
     pw = f.read().rstrip("\r\n")
+
+with open(addr_path, "r", encoding="utf-8") as f:
+    email = f.read().strip()
+
+with open(name_path, "r", encoding="utf-8") as f:
+    display_name = f.read().strip()
 
 # Strip whitespace (e.g. grouped 4-char blocks or trailing space from Google App Passwords)
 pw = "".join(urllib.parse.unquote(pw).split())
