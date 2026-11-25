@@ -35,6 +35,7 @@
 
       nil # Nix LSP
       nixpkgs-fmt # Nix formatter
+      marksman # Markdown LSP
 
 
       python3

@@ -23,6 +23,7 @@
     ./modules/home/apps/alacritty.nix
     ./modules/home/apps/kitty.nix
     ./modules/home/apps/neovim.nix
+    ./modules/home/apps/notes.nix
     ./modules/home/apps/librewolf.nix
     ./modules/home/apps/anki.nix
     ./modules/home/apps/unity.nix
