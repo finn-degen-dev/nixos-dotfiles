@@ -21,20 +21,24 @@ let
     pkgs.symlinkJoin {
       name = "${pkg.pname or "app"}-nvidia";
       paths = [ pkg ];
-      nativeBuildInputs = [ pkgs.makeWrapper ];
       postBuild = ''
         ${lib.concatMapStringsSep "\n" (bin: ''
           if [ -e "$out/bin/${bin}" ]; then
             target=$(readlink -f "$out/bin/${bin}")
             rm -f "$out/bin/${bin}"
-            makeWrapper "$target" "$bin" \
-              --unset __EGL_VENDOR_LIBRARY_FILENAMES \
-              --set __NV_PRIME_RENDER_OFFLOAD 1 \
-              --set __NV_PRIME_RENDER_OFFLOAD_PROVIDER NVIDIA-G0 \
-              --set __GLX_VENDOR_LIBRARY_NAME nvidia \
-              --set __VK_LAYER_NV_optimus NVIDIA_only \
-              --set VK_LOADER_DRIVERS_SELECT '*nvidia*' \
-              --prefix LD_LIBRARY_PATH : "/run/opengl-driver/lib"
+            {
+              printf '#!%s -e\n' "${pkgs.runtimeShell}"
+              printf '%s\n' \
+                "unset __EGL_VENDOR_LIBRARY_FILENAMES" \
+                "export __NV_PRIME_RENDER_OFFLOAD='1'" \
+                "export __NV_PRIME_RENDER_OFFLOAD_PROVIDER='NVIDIA-G0'" \
+                "export __GLX_VENDOR_LIBRARY_NAME='nvidia'" \
+                "export __VK_LAYER_NV_optimus='NVIDIA_only'" \
+                "export VK_LOADER_DRIVERS_SELECT='*nvidia*'" \
+                'export LD_LIBRARY_PATH="/run/opengl-driver/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"'
+              printf 'exec %q "$@"\n' "$target"
+            } > "$out/bin/${bin}"
+            chmod +x "$out/bin/${bin}"
           fi
         '') bins}
         if [ -d "$out/share/applications" ]; then
