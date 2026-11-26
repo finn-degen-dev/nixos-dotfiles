@@ -93,3 +93,16 @@ All components—Hyprland, Waybar, ReGreet, Kitty, Alacritty, Neovim, LibreWolf 
 │   ├── nixos/                 # core, security, gpu, desktop, audio, flatpak, ios, icloud
 │   └── home/                  # desktop, terminal, sops, apps (comms, karaoke, unity, etc.)
 └── config/                    # hypr, nvim, vicinae, waybar (out-of-store symlinked)
+```
+
+| Alias | Command |
+| :--- | :--- |
+| `nrs` | `sudo nixos-rebuild switch --flake ~/nixos-dotfiles#nixos-btw` |
+| `update` | Flake update + conditional GitHub/Cachix offload + switch + 7d GC |
+| `update-local` | Full local flake update, rebuild, and store optimization |
+| `sops-edit` | Edit `secrets/secrets.yaml` via `sops` |
+| `unity` | Launch `unityhub` via `nvidia-offload` |
+| `pack` | Bundle repo via `repomix` |
+
+</details>
+
