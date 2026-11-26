@@ -107,7 +107,27 @@ in
     music-toggle
     xarchiver
     playerctl
+    visidata
+    csvlens
   ];
+
+  xdg.desktopEntries.visidata = {
+    name = "VisiData";
+    genericName = "Spreadsheet & CSV Viewer";
+    comment = "Interactive terminal viewer and analyzer for CSV, TSV, JSON, and spreadsheets";
+    exec = "${pkgs.alacritty}/bin/alacritty --class visidata -e ${pkgs.visidata}/bin/vd %F";
+    icon = "x-office-spreadsheet";
+    terminal = false;
+    mimeType = [
+      "text/csv"
+      "application/csv"
+      "text/tab-separated-values"
+    ];
+    categories = [ "Utility" "Office" ];
+    settings = {
+      StartupWMClass = "visidata";
+    };
+  };
 
   xdg.mimeApps = {
     enable = true;
@@ -139,6 +159,10 @@ in
 
       "application/pdf" = [ "org.pwmt.zathura.desktop" ];
       "application/epub+zip" = [ "org.pwmt.zathura.desktop" ];
+
+      "text/csv" = [ "visidata.desktop" ];
+      "application/csv" = [ "visidata.desktop" ];
+      "text/tab-separated-values" = [ "visidata.desktop" ];
 
       "application/zip" = [ "xarchiver.desktop" ];
       "application/x-tar" = [ "xarchiver.desktop" ];
