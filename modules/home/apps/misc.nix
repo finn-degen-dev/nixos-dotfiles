@@ -27,7 +27,7 @@ let
           if [ -e "$out/bin/${bin}" ]; then
             target=$(readlink -f "$out/bin/${bin}")
             rm -f "$out/bin/${bin}"
-            makeWrapper "$target" "$out/bin/${bin}" \
+            makeWrapper "$target" "$bin" \
               --unset __EGL_VENDOR_LIBRARY_FILENAMES \
               --set __NV_PRIME_RENDER_OFFLOAD 1 \
               --set __NV_PRIME_RENDER_OFFLOAD_PROVIDER NVIDIA-G0 \
@@ -65,6 +65,49 @@ let
     pkg = pkgs.blender;
     bins = [ "blender" ];
   };
+
+  downloads-to-trash = pkgs.writeShellApplication {
+    name = "downloads-to-trash";
+    runtimeInputs = [
+      pkgs.trash-cli
+      pkgs.findutils
+      pkgs.coreutils
+    ];
+    text = ''
+      DOWNLOADS_DIR="$HOME/Downloads"
+      STATE_DIR="''${XDG_STATE_HOME:-$HOME/.local/state}"
+      BOOT_ID_FILE="$STATE_DIR/downloads-trashed-boot-id"
+
+      if [ -r /proc/sys/kernel/random/boot_id ]; then
+        CUR_BOOT_ID="$(cat /proc/sys/kernel/random/boot_id)"
+        if [ -f "$BOOT_ID_FILE" ] && [ "$(cat "$BOOT_ID_FILE")" = "$CUR_BOOT_ID" ]; then
+          exit 0
+        fi
+      else
+        CUR_BOOT_ID=""
+      fi
+
+      if [ -d "$DOWNLOADS_DIR" ]; then
+        find "$DOWNLOADS_DIR" -mindepth 1 -maxdepth 1 -exec trash-put -- {} +
+      fi
+
+      if [ -n "$CUR_BOOT_ID" ]; then
+        mkdir -p "$STATE_DIR"
+        printf '%s\n' "$CUR_BOOT_ID" > "$BOOT_ID_FILE"
+      fi
+    '';
+  };
+
+  trash-auto-empty = pkgs.writeShellApplication {
+    name = "trash-auto-empty";
+    runtimeInputs = [ pkgs.trash-cli ];
+    text = ''
+      TRASH_DIR="''${XDG_DATA_HOME:-$HOME/.local/share}/Trash"
+      if [ -d "$TRASH_DIR" ]; then
+        exec trash-empty --trash-dir "$TRASH_DIR" -f 7
+      fi
+    '';
+  };
 in
 {
   home.packages = with pkgs; [
@@ -89,6 +132,7 @@ in
     quickemu
     qemu-utils
     auto-editor
+    trash-cli
 
     # Productivity, security & transfer
     obsidian
@@ -122,10 +166,46 @@ in
     rtl_433
   ];
 
-  # Automatically prune files in Downloads older than 7 days
-  systemd.user.tmpfiles.rules = [
-    "e %h/Downloads - - - 7d"
-  ];
+  # Move Downloads contents to Trash once per boot (boot_id guard prevents mid-session rebuild triggers)
+  systemd.user.services.downloads-to-trash = {
+    Unit = {
+      Description = "Move files in Downloads to Trash on boot";
+    };
+    Service = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${downloads-to-trash}/bin/downloads-to-trash";
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
+
+  # Permanently delete items in Trash older than 7 days (using DeletionDate from .trashinfo)
+  systemd.user.services.trash-auto-empty = {
+    Unit = {
+      Description = "Delete trashed files older than 7 days";
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${trash-auto-empty}/bin/trash-auto-empty";
+    };
+  };
+
+  systemd.user.timers.trash-auto-empty = {
+    Unit = {
+      Description = "Schedule automatic Trash cleanup after 7 days";
+    };
+    Timer = {
+      Unit = "trash-auto-empty.service";
+      OnBootSec = "2min";
+      OnUnitActiveSec = "24h";
+      Persistent = true;
+    };
+    Install = {
+      WantedBy = [ "timers.target" ];
+    };
+  };
 
   xdg.desktopEntries."org.kde.kdenlive" = {
     name = "Kdenlive";
