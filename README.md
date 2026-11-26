@@ -1,3 +1,6 @@
+<div align="right">
+  <b>English</b> · <a href="README.de.md">Deutsch</a>
+</div>
 <div align="center">
 
 # nixos-dotfiles
